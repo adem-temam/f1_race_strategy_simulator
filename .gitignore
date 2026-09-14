@@ -1,0 +1,30 @@
+# Project documentation (user ignored)
+project.md
+projec.md
+
+# Python cache & build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+
+# Large datasets or downloads
+*.csv.gz
+*.parquet
