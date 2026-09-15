@@ -1,12 +1,16 @@
 # Project documentation (user ignored)
 project.md
 projec.md
+implementation_plan.md
+plan.md
+docs/
 
 # Python cache & build
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.pytest_cache/
 build/
 dist/
 *.egg-info/
