@@ -7,6 +7,8 @@ A data-driven simulation and optimization engine for Formula 1 race strategy. Th
 ## 📌 Features
 
 - **Lap-Time Decomposition Engine**: Synthesizes circuit baseline pace, compound pace offsets, dynamic fuel load, tyre degradation, and track evolution into individual lap times.
+- **Monte Carlo Engine**: Runs vectorized 10,000+ iteration probability simulations modeling lap pace variance, pit stop delays (heavy-tailed LogNormal), and tyre wear multipliers.
+- **Statistical Analytics**: Calculates Expected Time, Median, standard deviations, P95 Value at Risk, and head-to-head win probability matrix.
 - **Realistic Tyre Degradation**: Models linear wear ($\alpha$), quadratic thermal fatigue ($\beta$), and tyre performance cliffs ($\kappa$).
 - **Dynamic Fuel Mass Model**: Simulates linear fuel burn per lap with weight sensitivity penalties ($\gamma_{\text{fuel}}$).
 - **Pit Loss Modeling**: Accounts for pit lane transit loss and stationary stop duration.
@@ -117,6 +119,16 @@ View per-lap physical breakdown (degradation, remaining fuel, effective lap time
 python3 run_simulation.py --strategy "M26-H31" --laps
 ```
 
+### 6. Monte Carlo Probabilistic Simulation
+Run thousands of iterations introducing real-world stochastic variance (driver pace inconsistencies, pit stop disasters, and unpredictable tyre wear).
+```bash
+# Run 10,000 iterations to calculate Expected Time, Risk (P95), and Head-to-Head Win Probability
+python3 run_simulation.py --mc 10000
+
+# Run iterations and generate Seaborn KDE Distributions & Win Matrix plots (.png)
+python3 run_simulation.py --mc 5000 --plot
+```
+
 ---
 
 ## 🐍 Python API Example
@@ -162,7 +174,7 @@ All 18 tests verify model mechanics, fuel consumption conservation, pit stop acc
 ## 🗺️ Roadmap
 
 - [x] **Phase 1: Mathematical Modeling Core & Deterministic Simulation**
-- [ ] **Phase 2: Monte Carlo Simulation & Stochastic Uncertainty** (lap variance, pit stop delays, wear deviations)
+- [x] **Phase 2: Monte Carlo Simulation & Stochastic Uncertainty** (lap variance, pit stop delays, wear deviations)
 - [ ] **Phase 3: Strategy Optimization Engine** (automated pit window discovery via continuous & discrete search)
 - [ ] **Phase 4: Sensitivity Analysis & Decision Phase Maps** (crossover points and 2D parameter heatmaps)
 - [ ] **Phase 5: Real-World Historical Data Integration** (FastF1 / Ergast parameter fitting and race validation)

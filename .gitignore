@@ -32,3 +32,6 @@ ENV/
 # Large datasets or downloads
 *.csv.gz
 *.parquet
+
+# Plots & Visualizations
+*.png
