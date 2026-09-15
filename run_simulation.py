@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Interactive CLI runner for F1 Race Strategy Simulator."""
-
 import argparse
 import sys
 from typing import Optional
@@ -10,35 +7,35 @@ import numpy as np
 from src.config import CIRCUIT_PRESETS, create_race_model, get_default_compounds
 from src.simulation import simulate_race
 from src.strategies import Stint, Strategy
-from src.tyres import TyreCompound
 
 
-def parse_strategy_string(strategy_str: str, compounds: dict[str, TyreCompound]) -> Strategy:
-    """Parse a shorthand string like 'S15-M21-S21' or 'M26-H31' into a Strategy."""
-    tokens = strategy_str.strip().split("-")
+def parse_strategy_string(s_str: str, compounds: dict) -> Strategy:
+    """Parse shorthand strategy like 'S15-M21-S21'."""
     stints = []
-    for token in tokens:
-        token = token.strip()
-        if not token:
+    parts = s_str.split("-")
+    for part in parts:
+        part = part.strip().upper()
+        if not part:
             continue
-        compound_char = token[0].upper()
-        lap_str = token[1:]
-        if not lap_str.isdigit():
-            raise ValueError(f"Invalid stint token '{token}'. Expected format like 'S15' or 'M26'.")
-        
-        laps = int(lap_str)
-        char_map = {"S": "Soft", "M": "Medium", "H": "Hard"}
-        if compound_char not in char_map:
-            raise ValueError(f"Unknown compound code '{compound_char}'. Use S (Soft), M (Medium), or H (Hard).")
-        
-        comp_name = char_map[compound_char]
-        stints.append(Stint(compound=compounds[comp_name], laps=laps))
-    
-    return Strategy(stints=stints, name=strategy_str)
+        comp = part[0]
+        try:
+            laps = int(part[1:])
+        except ValueError:
+            raise ValueError(f"Invalid stint format '{part}'. Expected e.g. 'S15'.")
+
+        if comp == "S":
+            stints.append(Stint(compounds["Soft"], laps))
+        elif comp == "M":
+            stints.append(Stint(compounds["Medium"], laps))
+        elif comp == "H":
+            stints.append(Stint(compounds["Hard"], laps))
+        else:
+            raise ValueError(f"Unknown compound '{comp}'. Use S, M, or H.")
+    return Strategy(stints, name=s_str)
 
 
-def get_default_strategies(circuit_key: str, compounds: dict[str, TyreCompound]) -> list[Strategy]:
-    """Return realistic competing strategies for a given circuit."""
+def get_default_strategies(circuit_key: str, compounds: dict) -> list[Strategy]:
+    """Return common strategies based on the circuit."""
     s = compounds["Soft"]
     m = compounds["Medium"]
     h = compounds["Hard"]
@@ -46,9 +43,9 @@ def get_default_strategies(circuit_key: str, compounds: dict[str, TyreCompound])
     if circuit_key == "bahrain":
         # 57 laps
         return [
-            Strategy([Stint(m, 26), Stint(h, 31)], name="1-Stop (M-H)"),
             Strategy([Stint(s, 15), Stint(m, 21), Stint(s, 21)], name="2-Stop (S-M-S)"),
             Strategy([Stint(s, 14), Stint(h, 22), Stint(m, 21)], name="2-Stop (S-H-M)"),
+            Strategy([Stint(m, 26), Stint(h, 31)], name="1-Stop (M-H)"),
             Strategy([Stint(m, 20), Stint(h, 20), Stint(s, 17)], name="2-Stop (M-H-S)"),
         ]
     elif circuit_key == "barcelona":
@@ -167,6 +164,11 @@ def main() -> None:
         help="Print detailed lap-by-lap breakdown for the winning strategy (deterministic only).",
     )
     parser.add_argument(
+        "--laps-all",
+        action="store_true",
+        help="Print detailed lap-by-lap breakdown for all simulated strategies.",
+    )
+    parser.add_argument(
         "--mc",
         type=int,
         metavar="ITERATIONS",
@@ -222,7 +224,10 @@ def main() -> None:
         results = [simulate_race(strat, model) for strat in strategies]
         print_comparison_table(results, circuit_name, total_laps)
 
-        if args.laps:
+        if args.laps_all:
+            for res in results:
+                print_lap_telemetry(res)
+        elif args.laps:
             winning_result = min(results, key=lambda r: r.total_time)
             print_lap_telemetry(winning_result)
 
