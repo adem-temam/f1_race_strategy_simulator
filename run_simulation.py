@@ -140,6 +140,58 @@ def print_comparison_table_mc(results: list, circuit_name: str, total_laps: int)
     print("=" * 105 + "\n")
 
 
+def print_optimization_table(res, show_pit_windows: bool = True) -> None:
+    """Print structured ASCII table for optimization results."""
+    print("\n" + "=" * 105)
+    print(f"  F1 STRATEGY OPTIMIZATION ENGINE: {res.circuit_name} ({res.total_laps} Laps)")
+    print("=" * 105)
+    print(f"  Optimization Objective:  {res.objective.value.upper()}")
+    print(f"  Optimal Strategy:        {res.optimal_strategy.name or res.optimal_strategy.description}")
+    print(f"  Stint Breakdown:         {res.optimal_strategy.description}")
+    print(f"  Total Race Time:         {res.formatted_optimal_time} ({res.optimal_race_time:.3f}s)")
+    print(f"  Evaluations & Runtime:   {res.evaluations_count:,} strategies evaluated in {res.solve_time_seconds:.3f}s")
+
+    if show_pit_windows and res.pit_windows:
+        print("-" * 105)
+        print("  TACTICAL PIT WINDOWS:")
+        for pw in res.pit_windows:
+            print(
+                f"    * Stop {pw.pit_index}: Optimal Lap {pw.optimal_lap:<2} "
+                f"[Open: Lap {pw.window_open_lap} (+{pw.delta_open:.2f}s) | "
+                f"Close: Lap {pw.window_close_lap} (+{pw.delta_close:.2f}s)] "
+                f"-> Window Size: {pw.window_size} Laps (Tol: +{pw.tolerance_seconds:.1f}s)"
+            )
+
+    if res.ranked_strategies:
+        print("-" * 105)
+        print("  TOP-5 STRATEGY LEADERBOARD:")
+        print(f"  {'Pos':<4} {'Strategy Name':<28} {'Stops':<6} {'Stint Breakdown':<34} {'Race Time':<16} {'Delta':<10}")
+        print("  " + "-" * 101)
+        best_time = res.ranked_strategies[0][1]
+        for pos, (strat, s_time) in enumerate(res.ranked_strategies[:5], start=1):
+            delta_str = "OPTIMAL" if pos == 1 else f"+{s_time - best_time:.3f}s"
+            hours = int(s_time // 3600)
+            rem = s_time % 3600
+            m_str = f"{hours}h {int(rem // 60):02d}m {rem % 60:06.3f}s" if hours > 0 else f"{int(rem // 60):02d}m {rem % 60:06.3f}s"
+            print(
+                f"  {pos:<4} {strat.name or 'Strategy':<28} {strat.num_stops:<6} "
+                f"{strat.description:<34} {m_str:<16} {delta_str:<10}"
+            )
+
+    if res.pareto_frontier:
+        print("-" * 105)
+        print("  PARETO OPTIMAL FRONTIER (Pace vs. Risk):")
+        print(f"  {'Rank':<5} {'Strategy':<30} {'Expected Time':<18} {'P95 (Risk)':<18} {'Risk Delta':<12}")
+        print("  " + "-" * 101)
+        for idx, pt in enumerate(res.pareto_frontier[:5], start=1):
+            print(
+                f"  {idx:<5} {pt.strategy.description:<30} {pt.formatted_expected:<18} "
+                f"{pt.formatted_p95:<18} +{pt.risk_penalty:.2f}s"
+            )
+
+    print("=" * 105 + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="F1 Race Strategy Simulator - Evaluate and compare pit stop strategies."
@@ -200,6 +252,31 @@ def main() -> None:
         action="store_true",
         help="Generate plots for Monte Carlo results (KDE distribution and Win Probability).",
     )
+    parser.add_argument(
+        "--optimize",
+        action="store_true",
+        help="Run Strategy Optimization Engine to automatically find the mathematically optimal strategy.",
+    )
+    parser.add_argument(
+        "--max-stops",
+        type=int,
+        default=2,
+        choices=[1, 2, 3],
+        help="Maximum number of pit stops allowed during strategy optimization (default: 2).",
+    )
+    parser.add_argument(
+        "--objective",
+        type=str,
+        default="time",
+        choices=["time", "expected", "risk"],
+        help="Optimization objective function: 'time' (deterministic), 'expected' (Monte Carlo mean), or 'risk' (P95).",
+    )
+    parser.add_argument(
+        "--pit-windows",
+        action="store_true",
+        help="Calculate and display allowable tactical pit windows for the winning strategy.",
+    )
+
 
     args = parser.parse_args()
 
@@ -217,6 +294,31 @@ def main() -> None:
     if args.vsc_lap:
         for lap in args.vsc_lap:
             safety_car_laps[lap] = "vsc"
+
+    # Check for strategy optimization request
+    if args.optimize:
+        from src.optimization import StrategyOptimizer, OptimizationObjective
+
+        obj_map = {
+            "time": OptimizationObjective.DETERMINISTIC_TIME,
+            "expected": OptimizationObjective.EXPECTED_TIME,
+            "risk": OptimizationObjective.MIN_RISK_P95,
+        }
+        optimizer = StrategyOptimizer(model, compounds)
+        mc_iters = args.mc if args.mc else 500
+
+        print(f"\nRunning Strategy Optimization Engine for {circuit_name} (Era: {args.era}, Max Stops: {args.max_stops})...")
+        opt_res = optimizer.optimize(
+            max_stops=args.max_stops,
+            objective=obj_map[args.objective],
+            mc_iterations=mc_iters,
+        )
+        print_optimization_table(opt_res, show_pit_windows=args.pit_windows or True)
+
+        if args.laps:
+            winning_result = simulate_race(opt_res.optimal_strategy, model)
+            print_lap_telemetry(winning_result)
+        return
 
     # Determine strategies to run
     if args.strategy:
