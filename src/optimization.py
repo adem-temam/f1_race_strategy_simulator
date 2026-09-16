@@ -120,6 +120,94 @@ def _format_seconds(seconds: float) -> str:
     return f"{minutes:02d}m {secs:06.3f}s"
 
 
+def simulate_race_time_fast(strategy: Strategy, model: RaceModel) -> float:
+    """High-throughput race simulation returning total time without dataclass allocation.
+
+    Evaluates the exact same physical model as `simulate_race()` (tyre degradation,
+    fuel burn penalty, track evolution, pit loss, and dirty air / traffic deficit),
+    but avoids creating millions of LapRecord instances during combinatorial grid search.
+    """
+    circuit = model.circuit
+    fuel_model = model.fuel_model
+    total_laps = circuit.total_laps
+    base_lap_time = circuit.base_lap_time
+    deg_multiplier = circuit.tyre_degradation_multiplier
+    pit_loss = model.pitstop_model.effective_loss("normal")
+
+    field_spread = circuit.traffic_config.field_spread_rate
+    overtake_diff = circuit.traffic_config.overtake_difficulty
+    dirty_air_penalty = circuit.traffic_config.dirty_air_time_penalty
+    dirty_air_deg_mult = circuit.traffic_config.dirty_air_deg_multiplier
+
+    pit_laps = set(strategy.pit_laps)
+    cumulative_time = 0.0
+    current_lap = 1
+    laps_in_traffic = 0
+
+    for stint in strategy.stints:
+        comp = stint.compound
+        compound_delta = comp.base_delta
+        effective_age = 0.0
+
+        for _ in range(stint.laps):
+            is_pit = current_lap in pit_laps
+            in_traffic = laps_in_traffic > 0
+
+            if in_traffic:
+                laps_in_traffic -= 1
+                effective_age += dirty_air_deg_mult
+                traffic_pen = dirty_air_penalty
+            else:
+                effective_age += 1.0
+                traffic_pen = 0.0
+
+            deg = comp.degradation(effective_age, circuit_multiplier=deg_multiplier)
+            fuel_pen = fuel_model.penalty_at_lap(current_lap, total_laps)
+            track_evo = circuit.track_evolution_at_lap(current_lap)
+
+            lap_time = base_lap_time + compound_delta + deg + fuel_pen - track_evo + traffic_pen
+            cumulative_time += lap_time + (pit_loss if is_pit else 0.0)
+
+            if is_pit:
+                traffic_deficit = max(0.0, pit_loss - (current_lap * field_spread))
+                laps_in_traffic = int(traffic_deficit * overtake_diff)
+
+            current_lap += 1
+
+    return cumulative_time
+
+
+def compute_pareto_frontier(points: list[ParetoPoint]) -> list[ParetoPoint]:
+    """Filter candidate points to return strictly non-dominated Pareto-optimal strategies.
+
+    A point A dominates point B if:
+        expected_time(A) <= expected_time(B) and p95_time(A) <= p95_time(B)
+        with at least one strict inequality.
+    Only points not dominated by any other point are kept.
+    """
+    frontier: list[ParetoPoint] = []
+    for candidate in points:
+        dominated = False
+        for other in points:
+            if other is candidate:
+                continue
+            if (
+                other.expected_time <= candidate.expected_time
+                and other.p95_time <= candidate.p95_time
+                and (
+                    other.expected_time < candidate.expected_time
+                    or other.p95_time < candidate.p95_time
+                )
+            ):
+                dominated = True
+                break
+        if not dominated:
+            frontier.append(candidate)
+
+    frontier.sort(key=lambda p: p.expected_time)
+    return frontier
+
+
 class DynamicProgrammingSolver:
     """Exact global optimizer using Bellman backward recursion on a DAG."""
 
@@ -160,63 +248,76 @@ class DynamicProgrammingSolver:
                     table[lap, c_idx, age] = base_time + deg + fuel_penalty - track_evolution
         return table
 
-    def solve(self) -> tuple[Strategy, float]:
-        """Execute Bellman backward induction to find the global optimal Strategy."""
+    def solve(self, max_stops: int = 2) -> tuple[Strategy, float]:
+        """Execute Bellman backward induction to find the global optimal Strategy.
+
+        Args:
+            max_stops: Maximum number of pit stops allowed (strictly enforced).
+
+        Returns:
+            Tuple of (optimal Strategy, total race time in seconds).
+        """
         lap_table = self._precompute_lap_table()
 
-        # V[c_idx, age, u] holds minimum time from current lap to race end
+        # V[c_idx, age, u, stops] holds minimum time from current lap to race end
         # u = 1 if >=2 distinct compounds have been used, 0 otherwise
+        # stops in {0, ..., max_stops}
         INF = 1e9
-        V = np.full((self.num_compounds, self.max_tyre_age + 1, 2), INF)
-        policy_action = {}  # (lap, c, a, u) -> ("STAY" or ("PIT", next_c))
+        V = np.full((self.num_compounds, self.max_tyre_age + 1, 2, max_stops + 1), INF)
+        policy_action = {}  # (lap, c, a, u, stops) -> ("STAY" or ("PIT", next_c))
 
         # Terminal conditions at lap N
         for c_idx in range(self.num_compounds):
             for age in range(1, self.max_tyre_age + 1):
-                # At lap N, only u=1 (FIA compliance) has finite cost
                 lap_t = lap_table[self.total_laps, c_idx, age]
-                V[c_idx, age, 1] = lap_t
-                V[c_idx, age, 0] = INF
+                for stops in range(max_stops + 1):
+                    # At lap N, only u=1 (FIA compliance) has finite cost, requiring at least 1 stop
+                    if stops >= 1:
+                        V[c_idx, age, 1, stops] = lap_t
+                    V[c_idx, age, 0, stops] = INF
 
         # Backward recursion from N-1 down to 1
         for lap in range(self.total_laps - 1, 0, -1):
-            V_next = np.full((self.num_compounds, self.max_tyre_age + 1, 2), INF)
+            V_next = np.full((self.num_compounds, self.max_tyre_age + 1, 2, max_stops + 1), INF)
 
             for c_idx in range(self.num_compounds):
                 for age in range(1, self.max_tyre_age + 1):
                     lap_t = lap_table[lap, c_idx, age]
 
                     for u in (0, 1):
-                        # Option 1: STAY
-                        best_val = INF
-                        best_act = "STAY"
-                        if age < self.max_tyre_age:
-                            val_stay = lap_t + V[c_idx, age + 1, u]
-                            if val_stay < best_val:
-                                best_val = val_stay
-                                best_act = "STAY"
+                        for stops in range(max_stops + 1):
+                            best_val = INF
+                            best_act = "STAY"
 
-                        # Option 2: PIT to c_next
-                        for c_next in range(self.num_compounds):
-                            if c_next == c_idx:
-                                continue  # Distinct compound or new set
-                            # Pitting to a different compound satisfies FIA rule (u=1)
-                            val_pit = lap_t + self.pit_loss + V[c_next, 1, 1]
-                            if val_pit < best_val:
-                                best_val = val_pit
-                                best_act = ("PIT", c_next)
+                            # Option 1: STAY
+                            if age < self.max_tyre_age:
+                                val_stay = lap_t + V[c_idx, age + 1, u, stops]
+                                if val_stay < best_val:
+                                    best_val = val_stay
+                                    best_act = "STAY"
 
-                        V_next[c_idx, age, u] = best_val
-                        policy_action[(lap, c_idx, age, u)] = best_act
+                            # Option 2: PIT to c_next (only if stops < max_stops)
+                            if stops < max_stops:
+                                for c_next in range(self.num_compounds):
+                                    if c_next == c_idx:
+                                        continue  # Distinct compound
+                                    # Pitting to a different compound satisfies FIA rule (u=1)
+                                    val_pit = lap_t + self.pit_loss + V[c_next, 1, 1, stops + 1]
+                                    if val_pit < best_val:
+                                        best_val = val_pit
+                                        best_act = ("PIT", c_next)
+
+                            V_next[c_idx, age, u, stops] = best_val
+                            policy_action[(lap, c_idx, age, u, stops)] = best_act
 
             V = V_next
 
-        # Find best starting compound at lap 1, age 1, u=0
+        # Find best starting compound at lap 1, age 1, u=0, stops=0
         best_total = INF
         best_start_c = 0
         for c_idx in range(self.num_compounds):
-            if V[c_idx, 1, 0] < best_total:
-                best_total = V[c_idx, 1, 0]
+            if V[c_idx, 1, 0, 0] < best_total:
+                best_total = V[c_idx, 1, 0, 0]
                 best_start_c = c_idx
 
         # Forward reconstruction of stints
@@ -224,10 +325,11 @@ class DynamicProgrammingSolver:
         curr_c = best_start_c
         curr_age = 1
         curr_u = 0
+        curr_stops = 0
         stint_start_lap = 1
 
         for lap in range(1, self.total_laps):
-            act = policy_action.get((lap, curr_c, curr_age, curr_u), "STAY")
+            act = policy_action.get((lap, curr_c, curr_age, curr_u, curr_stops), "STAY")
             if act == "STAY":
                 curr_age += 1
             else:
@@ -237,6 +339,7 @@ class DynamicProgrammingSolver:
                 curr_c = act[1]
                 curr_age = 1
                 curr_u = 1
+                curr_stops += 1
                 stint_start_lap = lap + 1
 
         # Final stint
@@ -246,6 +349,7 @@ class DynamicProgrammingSolver:
         strategy = Strategy(stints, name=f"DP Optimal ({len(stints)-1}-Stop)")
         sim_res = simulate_race(strategy, self.model)
         return strategy, sim_res.total_time
+
 
 
 
@@ -361,8 +465,8 @@ class CombinatorialSearchSolver:
 
         results = []
         for strat in candidates:
-            res = simulate_race(strat, self.model)
-            results.append((strat, res.total_time))
+            total_time = simulate_race_time_fast(strat, self.model)
+            results.append((strat, total_time))
 
         results.sort(key=lambda x: x[1])
         return results
@@ -485,7 +589,7 @@ class StrategyOptimizer:
 
         if not ranked_candidates:
             # Fallback to Dynamic Programming if grid search returned empty
-            dp_strat, dp_time = self.dp_solver.solve()
+            dp_strat, dp_time = self.dp_solver.solve(max_stops=max_stops)
             ranked_candidates = [(dp_strat, dp_time)]
 
         # Step 2: Handle Objective Selection
@@ -496,9 +600,11 @@ class StrategyOptimizer:
 
         else:
             # For stochastic objectives (EXPECTED_TIME or MIN_RISK_P95):
-            # Evaluate top 15 candidates under Monte Carlo simulation
+            # Evaluate top candidates (up to 40) under Monte Carlo simulation
             stochastic_params = StochasticParameters()
-            top_subset = ranked_candidates[:15]
+            pool_size = min(40, len(ranked_candidates))
+            top_subset = ranked_candidates[:pool_size]
+            all_points: list[ParetoPoint] = []
             mc_evaluated = []
 
             for strat, det_time in top_subset:
@@ -512,8 +618,11 @@ class StrategyOptimizer:
                     std_dev=mc_res.std_dev,
                     risk_penalty=mc_res.p95_time - mc_res.mean_time,
                 )
-                pareto_points.append(point)
+                all_points.append(point)
                 mc_evaluated.append((strat, point))
+
+            # Strictly filter for non-dominated Pareto frontier
+            pareto_points = compute_pareto_frontier(all_points)
 
             if objective == OptimizationObjective.EXPECTED_TIME:
                 mc_evaluated.sort(key=lambda x: x[1].expected_time)
@@ -525,6 +634,7 @@ class StrategyOptimizer:
                 best_time = mc_evaluated[0][1].p95_time
             else:
                 best_strat, best_time = ranked_candidates[0]
+
 
         # Step 3: Compute Pit Windows for the winning strategy
         pit_windows = PitWindowAnalyzer.compute_pit_windows(

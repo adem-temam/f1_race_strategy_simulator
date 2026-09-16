@@ -9,10 +9,14 @@ from src.optimization import (
     DynamicProgrammingSolver,
     OptimizationObjective,
     OptimizationResult,
+    ParetoPoint,
     PitWindowAnalyzer,
     StrategyOptimizer,
+    compute_pareto_frontier,
+    simulate_race_time_fast,
 )
 from src.simulation import simulate_race
+from src.strategies import Stint, Strategy
 
 
 @pytest.fixture
@@ -133,3 +137,62 @@ def test_multi_objective_risk_optimization(monza_setup):
     assert first_point.expected_time > 0
     assert first_point.p95_time >= first_point.expected_time
     assert first_point.risk_penalty >= 0
+
+
+def test_dynamic_programming_max_stops_enforced(bahrain_setup):
+    """Verify that DynamicProgrammingSolver strictly respects the max_stops argument."""
+    model, compounds = bahrain_setup
+    dp = DynamicProgrammingSolver(model, compounds)
+
+    strat_1stop, _ = dp.solve(max_stops=1)
+    assert strat_1stop.num_stops == 1
+    assert len(strat_1stop.compounds_used) >= 2
+
+    strat_2stop, _ = dp.solve(max_stops=2)
+    assert strat_2stop.num_stops <= 2
+    assert len(strat_2stop.compounds_used) >= 2
+
+
+def test_fast_sim_matches_standard_simulate_race(bahrain_setup, monza_setup):
+    """Verify that simulate_race_time_fast accurately replicates simulate_race."""
+    for model, compounds in [bahrain_setup, monza_setup]:
+        strats = [
+            Strategy([
+                Stint(compounds[list(compounds.keys())[0]], 20),
+                Stint(compounds[list(compounds.keys())[1]], model.circuit.total_laps - 20),
+            ]),
+            Strategy([
+                Stint(compounds[list(compounds.keys())[0]], 15),
+                Stint(compounds[list(compounds.keys())[1]], 20),
+                Stint(compounds[list(compounds.keys())[0]], model.circuit.total_laps - 35),
+            ]),
+        ]
+        for s in strats:
+            std_time = simulate_race(s, model, validate=False).total_time
+            fast_time = simulate_race_time_fast(s, model)
+            assert fast_time == pytest.approx(std_time, abs=1e-5)
+
+
+def test_strict_pareto_non_domination():
+    """Verify compute_pareto_frontier filters out strictly dominated strategies."""
+    compounds = get_default_compounds()
+    s = compounds["Soft"]
+
+    m = compounds["Medium"]
+    dummy_strat1 = Strategy([Stint(s, 20), Stint(m, 37)], name="Strat A")
+    dummy_strat2 = Strategy([Stint(m, 25), Stint(s, 32)], name="Strat B")
+    dummy_strat3 = Strategy([Stint(s, 15), Stint(m, 42)], name="Strat C (Dominated)")
+
+    # Strat A: fastest expected, moderate risk
+    pt_a = ParetoPoint(dummy_strat1, expected_time=5400.0, p95_time=5415.0, std_dev=3.0, risk_penalty=15.0)
+    # Strat B: slightly slower expected, but lower risk
+    pt_b = ParetoPoint(dummy_strat2, expected_time=5405.0, p95_time=5410.0, std_dev=2.0, risk_penalty=5.0)
+    # Strat C: worse in BOTH expected and P95 compared to Strat A (strictly dominated)
+    pt_c = ParetoPoint(dummy_strat3, expected_time=5410.0, p95_time=5420.0, std_dev=4.0, risk_penalty=10.0)
+
+    frontier = compute_pareto_frontier([pt_a, pt_b, pt_c])
+    assert len(frontier) == 2
+    assert pt_a in frontier
+    assert pt_b in frontier
+    assert pt_c not in frontier
+

@@ -273,8 +273,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--pit-windows",
-        action="store_true",
-        help="Calculate and display allowable tactical pit windows for the winning strategy.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Display allowable tactical pit windows for the winning strategy (default: True).",
     )
 
 
@@ -313,7 +314,8 @@ def main() -> None:
             objective=obj_map[args.objective],
             mc_iterations=mc_iters,
         )
-        print_optimization_table(opt_res, show_pit_windows=args.pit_windows or True)
+        print_optimization_table(opt_res, show_pit_windows=args.pit_windows)
+
 
         if args.laps:
             winning_result = simulate_race(opt_res.optimal_strategy, model)
