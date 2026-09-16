@@ -354,3 +354,311 @@ def plot_win_probability_matrix(
     else:
         plt.show()
 
+
+def plot_1d_sensitivity(
+    sweep_res: "SweepResult1D",
+    title: Optional[str] = None,
+    save_path: Optional[str | Path] = None,
+) -> None:
+    """Plot 1D parameter sensitivity curves with crossover tipping points.
+
+    Args:
+        sweep_res: SweepResult1D object containing sweep data and crossovers.
+        title: Optional custom plot title.
+        save_path: Optional path to save the generated image.
+    """
+    from src.sensitivity import SweepResult1D
+
+    plt.figure(figsize=(11, 6))
+    sns.set_theme(style="whitegrid")
+
+    palette = sns.color_palette("tab10", len(sweep_res.strategy_times))
+    x_vals = sweep_res.parameter_values
+
+    # Plot each strategy curve
+    for idx, (name, times) in enumerate(sweep_res.strategy_times.items()):
+        times_min = times / 60.0
+        plt.plot(
+            x_vals,
+            times_min,
+            label=name,
+            color=palette[idx],
+            linewidth=2.2,
+            alpha=0.85,
+        )
+
+    # Plot lower envelope
+    plt.plot(
+        x_vals,
+        sweep_res.optimal_times / 60.0,
+        label="Optimal Strategy Envelope",
+        color="black",
+        linewidth=1.2,
+        linestyle=":",
+        alpha=0.6,
+    )
+
+    # Mark nominal baseline value
+    nom_val = sweep_res.nominal_value
+    if np.min(x_vals) <= nom_val <= np.max(x_vals):
+        plt.axvline(
+            x=nom_val,
+            color="grey",
+            linestyle="-.",
+            linewidth=1.5,
+            label=f"Nominal Baseline ({nom_val:.2f})",
+            alpha=0.7,
+        )
+
+    # Annotate crossover tipping points
+    for c in sweep_res.crossovers:
+        if np.min(x_vals) <= c.crossover_value <= np.max(x_vals):
+            plt.axvline(
+                x=c.crossover_value,
+                color="crimson",
+                linestyle="--",
+                linewidth=1.8,
+                alpha=0.85,
+            )
+            y_pos = (c.time_at_crossover / 60.0) if c.time_at_crossover > 0 else np.mean(sweep_res.optimal_times / 60.0)
+            plt.scatter([c.crossover_value], [y_pos], color="crimson", s=70, zorder=5)
+            plt.annotate(
+                f"Tipping Point: {c.crossover_value:.3f}\n({c.strategy_a_name} ↔ {c.strategy_b_name})",
+                xy=(c.crossover_value, y_pos),
+                xytext=(10, 15),
+                textcoords="offset points",
+                bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.6, ec="orange"),
+                arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0.1", color="crimson"),
+                fontsize=9,
+                fontweight="bold",
+            )
+
+    plot_title = title or f"Strategy Sensitivity: {sweep_res.parameter_display_name}"
+    plt.title(plot_title, fontsize=15, pad=12)
+    plt.xlabel(sweep_res.parameter_display_name, fontsize=12)
+    plt.ylabel("Total Race Time (Minutes)", fontsize=12)
+    plt.legend(title="Strategies", fontsize=10, loc="best")
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Sensitivity plot saved to {save_path}")
+    else:
+        plt.show()
+
+
+def plot_2d_phase_diagram(
+    phase_res: "PhaseDiagramResult2D",
+    title: Optional[str] = None,
+    save_path: Optional[str | Path] = None,
+) -> None:
+    """Plot a 2D decision boundary phase diagram showing 1-stop vs 2-stop regimes.
+
+    Args:
+        phase_res: PhaseDiagramResult2D object with grids, contours, and nominal point.
+        title: Optional plot title.
+        save_path: Optional path to save image.
+    """
+    from src.sensitivity import PhaseDiagramResult2D
+
+    plt.figure(figsize=(11, 8))
+    sns.set_theme(style="white")
+
+    # Diverging contour surface of Delta T = T(1-stop) - T(2-stop)
+    # Positive (green/warm) => 2-stop wins; Negative (blue/cool) => 1-stop wins
+    max_abs_delta = max(10.0, float(np.percentile(np.abs(phase_res.delta_grid), 95)))
+    levels = np.linspace(-max_abs_delta, max_abs_delta, 31)
+
+    cf = plt.contourf(
+        phase_res.x_grid,
+        phase_res.y_grid,
+        phase_res.delta_grid,
+        levels=levels,
+        cmap="coolwarm",
+        alpha=0.85,
+        extend="both",
+    )
+    cbar = plt.colorbar(cf)
+    cbar.set_label("Time Advantage: 2-Stop over 1-Stop (s)\n[Positive = 2-Stop Wins | Negative = 1-Stop Wins]", fontsize=11)
+
+    # Iso-delta contours
+    iso_levels = [-15.0, -10.0, -5.0, 5.0, 10.0, 15.0]
+    valid_iso = [l for l in iso_levels if np.min(phase_res.delta_grid) < l < np.max(phase_res.delta_grid)]
+    if valid_iso:
+        cs = plt.contour(
+            phase_res.x_grid,
+            phase_res.y_grid,
+            phase_res.delta_grid,
+            levels=valid_iso,
+            colors="grey",
+            linewidths=0.8,
+            linestyles="--",
+            alpha=0.7,
+        )
+        plt.clabel(cs, inline=True, fontsize=8, fmt="%+1.0fs")
+
+    # Critical Decision Boundary (Delta T = 0)
+    has_boundary = np.min(phase_res.delta_grid) < 0 < np.max(phase_res.delta_grid)
+    if has_boundary:
+        cs_zero = plt.contour(
+            phase_res.x_grid,
+            phase_res.y_grid,
+            phase_res.delta_grid,
+            levels=[0.0],
+            colors="black",
+            linewidths=3.0,
+            linestyles="-",
+        )
+        plt.clabel(cs_zero, inline=True, fontsize=11, fmt="Decision Boundary (Delta = 0s)")
+
+    # Mark nominal circuit point
+    nom_x, nom_y = phase_res.nominal_point
+    regime_str = f"{phase_res.nominal_stops}-Stop Regime"
+    plt.scatter(
+        [nom_x],
+        [nom_y],
+        color="gold",
+        edgecolors="black",
+        s=200,
+        marker="*",
+        zorder=6,
+        label=f"{phase_res.circuit_name} Nominal ({nom_x:.1f}s, {nom_y:.2f}) -> {regime_str}",
+    )
+    plt.annotate(
+        f"Nominal: {regime_str}",
+        xy=(nom_x, nom_y),
+        xytext=(15, -15),
+        textcoords="offset points",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", alpha=0.9),
+        fontweight="bold",
+        fontsize=10,
+    )
+
+    plot_title = title or f"Strategy Decision Phase Map: {phase_res.circuit_name}"
+    plt.title(plot_title, fontsize=15, pad=12)
+    plt.xlabel(phase_res.param_x_label, fontsize=12)
+    plt.ylabel(phase_res.param_y_label, fontsize=12)
+    plt.legend(loc="upper right", framealpha=0.9)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"2D Phase Diagram saved to {save_path}")
+    else:
+        plt.show()
+
+
+def plot_sensitivity_dashboard(
+    sweep_deg: "SweepResult1D",
+    sweep_pit: "SweepResult1D",
+    phase_res: "PhaseDiagramResult2D",
+    title: str = "F1 Strategy Sensitivity & Decision Phase Dashboard",
+    save_path: Optional[str | Path] = None,
+) -> None:
+    """Plot an executive 4-panel dashboard of strategy sensitivity and decision boundaries."""
+    fig, axes = plt.subplots(2, 2, figsize=(18, 14))
+    sns.set_theme(style="whitegrid")
+
+    # Panel 1: Degradation Multiplier 1D Sweep
+    ax1 = axes[0, 0]
+    for name, times in sweep_deg.strategy_times.items():
+        ax1.plot(sweep_deg.parameter_values, times / 60.0, label=name, linewidth=2)
+    for c in sweep_deg.crossovers:
+        ax1.axvline(c.crossover_value, color="crimson", linestyle="--", alpha=0.8)
+        ax1.annotate(
+            f"Tipping Point: {c.crossover_value:.3f}",
+            xy=(c.crossover_value, np.mean(sweep_deg.optimal_times / 60.0)),
+            xytext=(5, 10),
+            textcoords="offset points",
+            fontsize=9,
+            bbox=dict(boxstyle="round,pad=0.2", fc="yellow", alpha=0.6),
+        )
+    ax1.axvline(sweep_deg.nominal_value, color="grey", linestyle="-.", alpha=0.6, label="Nominal")
+    ax1.set_title("Tyre Degradation Sensitivity (1-Stop vs 2-Stop)", fontsize=13)
+    ax1.set_xlabel("Tyre Degradation Multiplier", fontsize=11)
+    ax1.set_ylabel("Total Race Time (Minutes)", fontsize=11)
+    ax1.legend(fontsize=9)
+
+    # Panel 2: Pit Loss Time 1D Sweep
+    ax2 = axes[0, 1]
+    for name, times in sweep_pit.strategy_times.items():
+        ax2.plot(sweep_pit.parameter_values, times / 60.0, label=name, linewidth=2)
+    for c in sweep_pit.crossovers:
+        ax2.axvline(c.crossover_value, color="crimson", linestyle="--", alpha=0.8)
+        ax2.annotate(
+            f"Tipping Point: {c.crossover_value:.2f}s",
+            xy=(c.crossover_value, np.mean(sweep_pit.optimal_times / 60.0)),
+            xytext=(5, 10),
+            textcoords="offset points",
+            fontsize=9,
+            bbox=dict(boxstyle="round,pad=0.2", fc="yellow", alpha=0.6),
+        )
+    ax2.axvline(sweep_pit.nominal_value, color="grey", linestyle="-.", alpha=0.6, label="Nominal")
+    ax2.set_title("Pit Loss Sensitivity & Safety Car Window", fontsize=13)
+    ax2.set_xlabel("Pit Stop Time Loss (Seconds)", fontsize=11)
+    ax2.set_ylabel("Total Race Time (Minutes)", fontsize=11)
+    ax2.legend(fontsize=9)
+
+    # Panel 3: 2D Phase Diagram
+    ax3 = axes[1, 0]
+    max_abs = max(10.0, float(np.percentile(np.abs(phase_res.delta_grid), 95)))
+    cf = ax3.contourf(
+        phase_res.x_grid,
+        phase_res.y_grid,
+        phase_res.delta_grid,
+        levels=np.linspace(-max_abs, max_abs, 25),
+        cmap="coolwarm",
+        alpha=0.85,
+    )
+    fig.colorbar(cf, ax=ax3, label="Time Delta: 2-Stop vs 1-Stop (s)")
+    if np.min(phase_res.delta_grid) < 0 < np.max(phase_res.delta_grid):
+        cs_zero = ax3.contour(
+            phase_res.x_grid, phase_res.y_grid, phase_res.delta_grid, levels=[0.0], colors="black", linewidths=2.5
+        )
+        ax3.clabel(cs_zero, inline=True, fontsize=10, fmt="Boundary (Delta=0s)")
+    nom_x, nom_y = phase_res.nominal_point
+    ax3.scatter([nom_x], [nom_y], color="gold", edgecolors="black", s=180, marker="*", zorder=5, label=f"Nominal ({phase_res.nominal_stops}-Stop)")
+    ax3.set_title("2D Decision Phase Map (Pit Loss vs Degradation)", fontsize=13)
+    ax3.set_xlabel(phase_res.param_x_label, fontsize=11)
+    ax3.set_ylabel(phase_res.param_y_label, fontsize=11)
+    ax3.legend(fontsize=9, loc="upper right")
+
+    # Panel 4: Dimensionless Elasticity Comparison Bar Chart
+    ax4 = axes[1, 1]
+    strats = list(sweep_deg.strategy_times.keys())
+    # Compute elasticity for deg and pit loss
+    nom_deg = sweep_deg.nominal_value
+    nom_pit = sweep_pit.nominal_value
+    deg_elast = [
+        (nom_deg / sweep_deg.strategy_times[s][len(sweep_deg.parameter_values)//2])
+        * ((sweep_deg.strategy_times[s][-1] - sweep_deg.strategy_times[s][0]) / (sweep_deg.parameter_values[-1] - sweep_deg.parameter_values[0]))
+        for s in strats
+    ]
+    pit_elast = [
+        (nom_pit / sweep_pit.strategy_times[s][len(sweep_pit.parameter_values)//2])
+        * ((sweep_pit.strategy_times[s][-1] - sweep_pit.strategy_times[s][0]) / (sweep_pit.parameter_values[-1] - sweep_pit.parameter_values[0]))
+        for s in strats
+    ]
+
+    y_pos = np.arange(len(strats))
+    width = 0.35
+    ax4.barh(y_pos - width/2, deg_elast, width, label="Tyre Deg Elasticity (%T / %Deg)", color="indianred")
+    ax4.barh(y_pos + width/2, pit_elast, width, label="Pit Loss Elasticity (%T / %PitLoss)", color="cornflowerblue")
+    ax4.set_yticks(y_pos)
+    ax4.set_yticklabels(strats, fontsize=10)
+    ax4.set_xlabel("Dimensionless Elasticity E_theta (% Race Time Change per 1% Parameter Shift)", fontsize=11)
+    ax4.set_title("Strategy Elasticity & Environmental Vulnerability", fontsize=13)
+    ax4.legend(fontsize=9)
+
+    plt.suptitle(title, fontsize=16, y=0.99)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Sensitivity dashboard saved to {save_path}")
+    else:
+        plt.show()
+

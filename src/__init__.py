@@ -12,6 +12,16 @@ from src.optimization import (
     PitWindow,
     StrategyOptimizer,
 )
+from src.sensitivity import (
+    CrossoverFinder,
+    CrossoverPoint,
+    ParameterSweep1D,
+    PhaseDiagram2D,
+    PhaseDiagramResult2D,
+    RobustnessAnalyzer,
+    SensitivityParameter,
+    SweepResult1D,
+)
 
 __all__ = [
     "TyreCompound",
@@ -28,5 +38,13 @@ __all__ = [
     "OptimizationResult",
     "PitWindow",
     "StrategyOptimizer",
+    "SensitivityParameter",
+    "CrossoverPoint",
+    "SweepResult1D",
+    "PhaseDiagramResult2D",
+    "ParameterSweep1D",
+    "CrossoverFinder",
+    "PhaseDiagram2D",
+    "RobustnessAnalyzer",
 ]
 
