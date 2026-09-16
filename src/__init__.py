@@ -6,6 +6,12 @@ from src.pitstop import PitStopModel
 from src.strategies import Stint, Strategy
 from src.model import CircuitConfig, LapRecord, RaceModel
 from src.simulation import RaceResult, simulate_race
+from src.optimization import (
+    OptimizationObjective,
+    OptimizationResult,
+    PitWindow,
+    StrategyOptimizer,
+)
 
 __all__ = [
     "TyreCompound",
@@ -18,4 +24,9 @@ __all__ = [
     "RaceModel",
     "RaceResult",
     "simulate_race",
+    "OptimizationObjective",
+    "OptimizationResult",
+    "PitWindow",
+    "StrategyOptimizer",
 ]
+
