@@ -45,6 +45,7 @@ def test_race_model_lap_computation() -> None:
         stint_index=0,
         compound=soft,
         tyre_age=1,
+        effective_tyre_age=1.0,
         is_pit_lap=False,
         previous_cumulative_time=0.0,
     )
@@ -69,6 +70,7 @@ def test_race_model_lap_computation() -> None:
         stint_index=0,
         compound=soft,
         tyre_age=15,
+        effective_tyre_age=15.0,
         is_pit_lap=True,
         previous_cumulative_time=1300.0,
     )

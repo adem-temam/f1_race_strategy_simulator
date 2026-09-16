@@ -159,6 +159,27 @@ def main() -> None:
         help="Custom strategy in shorthand format (e.g. -s 'S15-M21-S21' -s 'M26-H31').",
     )
     parser.add_argument(
+        "--era",
+        type=str,
+        default="2024",
+        choices=["2024", "2026"],
+        help="Formula 1 technical regulations era (default: 2024). Choices: 2024, 2026.",
+    )
+    parser.add_argument(
+        "--sc-lap",
+        type=int,
+        action="append",
+        metavar="LAP",
+        help="Simulate a Safety Car deployment on specified lap(s) (e.g. --sc-lap 15 --sc-lap 16).",
+    )
+    parser.add_argument(
+        "--vsc-lap",
+        type=int,
+        action="append",
+        metavar="LAP",
+        help="Simulate a Virtual Safety Car deployment on specified lap(s).",
+    )
+    parser.add_argument(
         "--laps",
         action="store_true",
         help="Print detailed lap-by-lap breakdown for the winning strategy (deterministic only).",
@@ -182,10 +203,20 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    compounds = get_default_compounds()
-    model = create_race_model(args.circuit)
+    from src.config import get_circuit_compounds
+    compounds = get_circuit_compounds(args.circuit)
+    model = create_race_model(args.circuit, era=args.era)
     circuit_name = model.circuit.name
     total_laps = model.circuit.total_laps
+
+    # Build safety car lap map if provided
+    safety_car_laps = {}
+    if args.sc_lap:
+        for lap in args.sc_lap:
+            safety_car_laps[lap] = "safety_car"
+    if args.vsc_lap:
+        for lap in args.vsc_lap:
+            safety_car_laps[lap] = "vsc"
 
     # Determine strategies to run
     if args.strategy:
@@ -209,7 +240,7 @@ def main() -> None:
         from src.montecarlo import simulate_monte_carlo
         
         params = StochasticParameters()
-        print(f"\nRunning {args.mc} Monte Carlo simulations per strategy...")
+        print(f"\nRunning {args.mc} Monte Carlo simulations per strategy (Era: {args.era})...")
         
         results = [simulate_monte_carlo(strat, model, params, n_iterations=args.mc) for strat in strategies]
         
@@ -221,8 +252,12 @@ def main() -> None:
             plot_win_probability_matrix(results, save_path="mc_win_matrix.png")
     else:
         # Run deterministic simulations
-        results = [simulate_race(strat, model) for strat in strategies]
-        print_comparison_table(results, circuit_name, total_laps)
+        results = [
+            simulate_race(strat, model, safety_car_laps=safety_car_laps or None)
+            for strat in strategies
+        ]
+        era_title = f"{circuit_name} [{args.era} Regs]" if args.era != "2024" else circuit_name
+        print_comparison_table(results, era_title, total_laps)
 
         if args.laps_all:
             for res in results:
