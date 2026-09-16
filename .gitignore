@@ -53,6 +53,11 @@ Thumbs.db
 *.svg
 *.log
 benchmark_output.json
+benchmark_results*.json
+benchmark_results_*.json
+*.jsonl
 scratch/
 tmp/
 resolve.py
+.gemini/
+
