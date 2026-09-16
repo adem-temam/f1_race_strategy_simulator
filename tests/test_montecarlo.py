@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from src.config import create_race_model, get_default_compounds
-from src.montecarlo import calculate_win_probability, simulate_monte_carlo
+from src.montecarlo import calculate_win_probability, compute_win_probability_matrix, simulate_monte_carlo
 from src.stochastic import StochasticParameters
 from src.strategies import Stint, Strategy
 
@@ -94,3 +94,47 @@ def test_win_probability(compounds, model) -> None:
     # strat1 should easily beat the terrible strat2 which pushes softs to 40 laps
     p_win = calculate_win_probability(res1, res2)
     assert p_win == 1.0  # 100% win rate
+
+
+def test_compute_win_probability_matrix(compounds, model) -> None:
+    strat1 = Strategy(
+        stints=[
+            Stint(compound=compounds["Medium"], laps=26),
+            Stint(compound=compounds["Hard"], laps=31),
+        ],
+        name="Strategy 1",
+    )
+    strat2 = Strategy(
+        stints=[
+            Stint(compound=compounds["Soft"], laps=15),
+            Stint(compound=compounds["Medium"], laps=21),
+            Stint(compound=compounds["Soft"], laps=21),
+        ],
+        name="Strategy 2",
+    )
+    strat3 = Strategy(
+        stints=[
+            Stint(compound=compounds["Soft"], laps=40),
+            Stint(compound=compounds["Hard"], laps=17),
+        ],
+        name="Strategy 3",
+    )
+
+    params = StochasticParameters()
+    res1 = simulate_monte_carlo(strat1, model, params, n_iterations=200, seed=42)
+    res2 = simulate_monte_carlo(strat2, model, params, n_iterations=200, seed=42)
+    res3 = simulate_monte_carlo(strat3, model, params, n_iterations=200, seed=42)
+
+    matrix, names = compute_win_probability_matrix([res1, res2, res3])
+
+    assert matrix.shape == (3, 3)
+    assert names == ["Strategy 1", "Strategy 2", "Strategy 3"]
+    # Check diagonal is 0.5
+    for i in range(3):
+        assert matrix[i, i] == pytest.approx(0.5)
+    # Check complement probability P(i < j) + P(j < i) == 1.0
+    for i in range(3):
+        for j in range(3):
+            if i != j:
+                assert matrix[i, j] + matrix[j, i] == pytest.approx(1.0, abs=1e-5)
+

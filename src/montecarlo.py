@@ -165,3 +165,35 @@ def calculate_win_probability(res_a: MonteCarloResult, res_b: MonteCarloResult) 
     
     wins = np.sum(res_a.race_times < res_b.race_times)
     return float(wins / res_a.n_iterations)
+
+
+def compute_win_probability_matrix(
+    results: list[MonteCarloResult],
+) -> tuple[np.ndarray, list[str]]:
+    """Compute the pairwise win probability matrix for a list of strategies.
+
+    Args:
+        results: List of MonteCarloResult objects to compare.
+
+    Returns:
+        A tuple of:
+            - prob_matrix: (N, N) NumPy array where entry [i, j] is P(Strategy_i < Strategy_j).
+              Diagonal entries [i, i] are 0.5.
+            - names: List of strategy names corresponding to the rows/columns.
+    """
+    n = len(results)
+    names = [
+        r.deterministic_result.strategy.name or f"Strategy {idx + 1}"
+        for idx, r in enumerate(results)
+    ]
+    prob_matrix = np.zeros((n, n), dtype=float)
+
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                prob_matrix[i, j] = 0.5
+            else:
+                prob_matrix[i, j] = calculate_win_probability(results[i], results[j])
+
+    return prob_matrix, names
+
