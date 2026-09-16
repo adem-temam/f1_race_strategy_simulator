@@ -9,7 +9,8 @@ A data-driven simulation and optimization engine for Formula 1 race strategy. Th
 - **Lap-Time Decomposition Engine**: Synthesizes circuit baseline pace, compound pace offsets, dynamic fuel burn load, non-linear tyre degradation, track rubbering evolution, and traffic penalties into individual lap times.
 - **Dynamic Programming Optimizer**: Exact global strategy solver utilizing Bellman backward induction on a Directed Acyclic Graph (DAG) in `< 15ms`.
 - **Combinatorial Grid Search**: High-throughput strategy evaluation capable of screening 19,000+ candidate strategies in `~0.5 seconds`.
-- **Tactical Pit Window Discovery**: Calculates allowable undercut and overcut pit windows around optimal stop laps within an acceptable tactical delta ($\delta_{\te- **Sensitivity Analysis & Tipping Point Engine**: Calculates exact critical crossover thresholds (e.g., degradation rate where 2-stop beats 1-stop) using Brent's method root-finding down to $10^{-4}$ precision.
+- **Tactical Pit Window Discovery**: Calculates allowable undercut and overcut pit windows around optimal stop laps within an acceptable tactical delta ($\delta_{\text{tol}}$).
+- **Sensitivity Analysis & Tipping Point Engine**: Calculates exact critical crossover thresholds (e.g., degradation rate where 2-stop beats 1-stop) using Brent's method root-finding down to $10^{-4}$ precision.
 - **2D Decision Phase Maps**: Maps the entire parameter space (Pit Loss vs Tyre Degradation), generating decision boundary contours, iso-delta surfaces, and tactical safety margins.
 - **Dimensionless Elasticity & Minimax Regret**: Measures strategy vulnerability ($\% \Delta T_{\text{race}} / \% \Delta \theta$) and minimax regret under environmental misestimation.
 - **Multi-Objective & Pareto Frontier Analysis**: Discovers non-dominated strategies balancing raw pace ($\mathbb{E}[T_{\text{race}}]$) against downside risk ($P_{95}$ Value at Risk).
@@ -160,15 +161,37 @@ python3 run_simulation.py --mc 5000 --plot
 
 ## 🐍 Python API Example
 
+### Strategy Optimization (Phase 3)
 ```python
 from src.config import create_race_model, get_circuit_compounds
-from src.sensitivity import CrossoverFinder, PhaseDiagram2D, SensitivityParameter
+from src.optimization import StrategyOptimizer, OptimizationObjective
 
 # 1. Initialize circuit and compounds
 model = create_race_model("bahrain")
 compounds = get_circuit_compounds("bahrain")
 
-# 2. Find exact critical tipping point where 2-stop beats 1-stop
+# 2. Initialize optimizer
+optimizer = StrategyOptimizer(model, compounds)
+
+# 3. Discover optimal strategy
+result = optimizer.optimize(max_stops=2, objective=OptimizationObjective.DETERMINISTIC_TIME)
+print(f"Optimal Strategy: {result.optimal_strategy.description}")
+print(f"Total Race Time: {result.formatted_optimal_time}")
+
+# 4. Inspect tactical pit windows
+for window in result.pit_windows:
+    print(f"Stop {window.pit_index}: Window Laps {window.window_open_lap}–{window.window_close_lap} (Size: {window.window_size}L)")
+```
+
+### Sensitivity Analysis & Decision Boundaries (Phase 4)
+```python
+from src.config import create_race_model, get_circuit_compounds
+from src.sensitivity import CrossoverFinder, PhaseDiagram2D, SensitivityParameter
+
+model = create_race_model("bahrain")
+compounds = get_circuit_compounds("bahrain")
+
+# 1. Find exact critical tipping point where 2-stop beats 1-stop
 finder = CrossoverFinder(model, compounds)
 c_pt = finder.find_1_vs_2_stop_crossover(
     param=SensitivityParameter.TYRE_DEG_MULTIPLIER,
@@ -178,7 +201,7 @@ print(f"Crossover Degradation Multiplier: {c_pt.crossover_value:.4f}")
 print(f"Circuit Nominal Baseline: {c_pt.nominal_value:.4f}")
 print(f"Distance to Boundary: {c_pt.distance_from_nominal:+.4f}")
 
-# 3. Compute 2D Decision Phase Diagram
+# 2. Compute 2D Decision Phase Diagram
 phase_mapper = PhaseDiagram2D(model, compounds)
 phase_result = phase_mapper.compute_phase_map(
     param_x=SensitivityParameter.PIT_LOSS,
@@ -210,4 +233,3 @@ All 64 unit tests verify model mechanics, fuel consumption conservation, pit sto
 - [x] **Phase 4: Sensitivity Analysis & Decision Phase Maps** (crossover tipping points, Brent's method root-finding, 2D decision phase boundaries, elasticity, and minimax regret)
 - [ ] **Phase 5: Real-World Historical Data Integration** (FastF1 / Ergast parameter fitting and race validation)
 - [ ] **Phase 6: Interactive Dashboard & Scientific Visualization**
-

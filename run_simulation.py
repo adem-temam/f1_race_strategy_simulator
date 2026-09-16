@@ -272,7 +272,6 @@ def print_phase_map_summary(phase_res) -> None:
     print(f"  Boundary Status:         {status}")
     print("=" * 95 + "\n")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="F1 Race Strategy Simulator - Evaluate and compare pit stop strategies."
@@ -494,7 +493,6 @@ def main() -> None:
                 else:
                     plot_1d_sensitivity(sweep_res, save_path="sensitivity_curve.png")
         return
-
     # Check for strategy optimization request
     if args.optimize:
 
