@@ -120,7 +120,11 @@ def _format_seconds(seconds: float) -> str:
     return f"{minutes:02d}m {secs:06.3f}s"
 
 
-def simulate_race_time_fast(strategy: Strategy, model: RaceModel) -> float:
+def simulate_race_time_fast(
+    strategy: Strategy,
+    model: RaceModel,
+    compounds: Optional[dict[str, TyreCompound]] = None,
+) -> float:
     """High-throughput race simulation returning total time without dataclass allocation.
 
     Evaluates the exact same physical model as `simulate_race()` (tyre degradation,
@@ -145,7 +149,7 @@ def simulate_race_time_fast(strategy: Strategy, model: RaceModel) -> float:
     laps_in_traffic = 0
 
     for stint in strategy.stints:
-        comp = stint.compound
+        comp = compounds.get(stint.compound.name, stint.compound) if compounds is not None else stint.compound
         compound_delta = comp.base_delta
         effective_age = 0.0
 

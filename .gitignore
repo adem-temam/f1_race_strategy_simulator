@@ -45,12 +45,18 @@ Thumbs.db
 # Large datasets or downloads
 *.csv.gz
 *.parquet
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.npz
 
 # Plots & Generated Output Data
 *.png
 *.jpg
 *.jpeg
 *.svg
+*.pdf
 *.log
 benchmark_output.json
 benchmark_results*.json
@@ -58,6 +64,34 @@ benchmark_results_*.json
 *.jsonl
 scratch/
 tmp/
+temp/
 resolve.py
 .gemini/
+
+# Security & Secrets
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.secret
+*.token
+credentials.json
+client_secret*.json
+secrets/
+
+# Databases & local caches
+*.db
+*.sqlite
+*.sqlite3
+.cache/
+coverage.xml
+*.whl
+*.egg
+*.bak
+*.tmp
+*.sublime-workspace
+*.sublime-project
+.directory
 

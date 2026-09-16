@@ -192,6 +192,86 @@ def print_optimization_table(res, show_pit_windows: bool = True) -> None:
     print("=" * 105 + "\n")
 
 
+def print_crossover_table(c, circuit_name: str) -> None:
+    """Print ASCII table summarizing critical tipping points."""
+    print("\n" + "=" * 95)
+    print(f"  CRITICAL TIPPING POINT (CROSSOVER) ANALYSIS: {circuit_name}")
+    print("=" * 95)
+    print(f"  Parameter Evaluated:     {c.parameter_name}")
+    print(f"  Circuit Nominal Baseline:{c.nominal_value:.4f}")
+    if c.found:
+        print(f"  Exact Crossover Root:    {c.crossover_value:.4f}")
+        print(f"  Distance from Nominal:   {c.distance_from_nominal:+.4f} (Parameter delta required to flip optimum)")
+        print(f"  Strategy on Left:        {c.strategy_a_name}")
+        print(f"  Strategy on Right:       {c.strategy_b_name}")
+        print(f"  Transition Sharpness:    {c.sensitivity_derivative:+.3f} s / unit (d(Delta T)/d(param))")
+        if c.time_at_crossover > 0:
+            from src.optimization import _format_seconds
+            print(f"  Race Time at Crossover:  {_format_seconds(c.time_at_crossover)} ({c.time_at_crossover:.3f}s)")
+    else:
+        print(f"  Crossover Status:        {c.message}")
+    print("=" * 95 + "\n")
+
+
+def print_sensitivity_sweep_table(res, circuit_name: str) -> None:
+    """Print ASCII table showing 1D parameter sweep and elasticity."""
+    print("\n" + "=" * 105)
+    print(f"  1D SENSITIVITY SWEEP: {circuit_name} - {res.parameter_display_name}")
+    print("=" * 105)
+    strat_names = list(res.strategy_times.keys())
+    val_header = f"{'Param Val':<12}"
+    strat_headers = "".join([f"{name[:20]:<22}" for name in strat_names])
+    print(val_header + strat_headers + f"{'Winning Strategy':<20}")
+    print("-" * 105)
+
+    step_skip = max(1, len(res.parameter_values) // 14)
+    for i in range(0, len(res.parameter_values), step_skip):
+        v = res.parameter_values[i]
+        nom_marker = " *" if abs(v - res.nominal_value) < 1e-4 else "  "
+        v_str = f"{v:.3f}{nom_marker}"
+        times_strs = "".join(
+            [f"{res.strategy_times[name][i]/60.0:6.2f}m ({res.strategy_times[name][i]:.1f}s)    " for name in strat_names]
+        )
+        print(f"{v_str:<12}" + times_strs + f"{res.optimal_strategies[i]:<20}")
+    print("-" * 105)
+
+    if res.elasticities:
+        print("  NORMALIZED DIMENSIONLESS ELASTICITY AT NOMINAL BASELINE (% Time / % Param):")
+        for s_name, elast in res.elasticities.items():
+            print(f"    * {s_name:<32}: E = {elast:+.4f} ({elast*100:+.2f}% race time shift per 1% change)")
+
+    if res.crossovers:
+        print("  DISCOVERED TIPPING POINTS:")
+        for c in res.crossovers:
+            print(
+                f"    * Tipping at {c.crossover_value:.4f}: {c.strategy_a_name} ↔ {c.strategy_b_name} "
+                f"(Nominal distance: {c.distance_from_nominal:+.4f})"
+            )
+    print("=" * 105 + "\n")
+
+
+def print_phase_map_summary(phase_res) -> None:
+    """Print summary metrics for 2D decision boundary phase mapping."""
+    print("\n" + "=" * 95)
+    print(f"  2D DECISION BOUNDARY PHASE MAP: {phase_res.circuit_name}")
+    print("=" * 95)
+    print(f"  X-Axis Parameter:        {phase_res.param_x_label} [{phase_res.x_values[0]:.1f} to {phase_res.x_values[-1]:.1f}]")
+    print(f"  Y-Axis Parameter:        {phase_res.param_y_label} [{phase_res.y_values[0]:.2f} to {phase_res.y_values[-1]:.2f}]")
+    nom_x, nom_y = phase_res.nominal_point
+    print(f"  Nominal Operating Point: ({nom_x:.1f}s, {nom_y:.2f})")
+    print(f"  Nominal Winning Regime:  {phase_res.nominal_stops}-Stop Strategy")
+
+    n_1stop = int(np.sum(phase_res.optimal_stops_grid == 1))
+    n_2stop = int(np.sum(phase_res.optimal_stops_grid == 2))
+    total_pts = phase_res.optimal_stops_grid.size
+    print(f"  Phase Partitioning:      1-Stop: {n_1stop}/{total_pts} ({n_1stop/total_pts:.1%}) | "
+          f"2-Stop: {n_2stop}/{total_pts} ({n_2stop/total_pts:.1%})")
+
+    has_crossover = np.min(phase_res.delta_grid) < 0 < np.max(phase_res.delta_grid)
+    status = "Active Decision Boundary exists in parameter space." if has_crossover else "Single strategy dominates entire grid."
+    print(f"  Boundary Status:         {status}")
+    print("=" * 95 + "\n")
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="F1 Race Strategy Simulator - Evaluate and compare pit stop strategies."
@@ -277,7 +357,35 @@ def main() -> None:
         default=True,
         help="Display allowable tactical pit windows for the winning strategy (default: True).",
     )
-
+    parser.add_argument(
+        "--sensitivity",
+        action="store_true",
+        help="Run parameter sensitivity analysis to study strategy response curves.",
+    )
+    parser.add_argument(
+        "--param",
+        type=str,
+        default="deg",
+        choices=["deg", "pit-loss", "soft-delta", "track-evo", "fuel-penalty"],
+        help="Parameter to sweep in sensitivity analysis (default: deg).",
+    )
+    parser.add_argument(
+        "--range",
+        type=float,
+        nargs="+",
+        metavar=("MIN", "MAX"),
+        help="Range of parameter sweep: MIN MAX [STEPS] (e.g. --range 0.6 2.0 15).",
+    )
+    parser.add_argument(
+        "--crossover",
+        action="store_true",
+        help="Compute exact critical tipping point (root finding) where optimal strategy flips.",
+    )
+    parser.add_argument(
+        "--phase-map",
+        action="store_true",
+        help="Generate a 2D decision boundary phase diagram across Pit Loss and Tyre Degradation.",
+    )
 
     args = parser.parse_args()
 
@@ -296,6 +404,95 @@ def main() -> None:
         for lap in args.vsc_lap:
             safety_car_laps[lap] = "vsc"
 
+    # Check for 2D Phase Map request
+    if args.phase_map:
+        from src.sensitivity import PhaseDiagram2D, SensitivityParameter
+        from src.visualization import plot_2d_phase_diagram
+
+        print(f"\nComputing 2D Decision Phase Map for {circuit_name} (Pit Loss vs Tyre Degradation)...")
+        p2d = PhaseDiagram2D(model, compounds)
+        phase_res = p2d.compute_phase_map(
+            param_x=SensitivityParameter.PIT_LOSS,
+            x_range=(16.0, 32.0),
+            param_y=SensitivityParameter.TYRE_DEG_MULTIPLIER,
+            y_range=(0.6, 2.2),
+            resolution=(25, 25),
+        )
+        print_phase_map_summary(phase_res)
+        if args.plot:
+            save_file = f"phase_map_{args.circuit}.png"
+            plot_2d_phase_diagram(phase_res, save_path=save_file)
+        return
+
+    # Check for 1D Sensitivity Analysis / Crossover request
+    if args.sensitivity or args.crossover:
+        from src.sensitivity import (
+            ParameterSweep1D,
+            CrossoverFinder,
+            SensitivityParameter,
+            PhaseDiagram2D,
+        )
+        from src.visualization import plot_1d_sensitivity, plot_sensitivity_dashboard
+
+        param_map = {
+            "deg": SensitivityParameter.TYRE_DEG_MULTIPLIER,
+            "pit-loss": SensitivityParameter.PIT_LOSS,
+            "soft-delta": SensitivityParameter.COMPOUND_DELTA_SOFT,
+            "track-evo": SensitivityParameter.TRACK_EVOLUTION,
+            "fuel-penalty": SensitivityParameter.FUEL_PENALTY,
+        }
+        chosen_param = param_map[args.param]
+
+        # Determine sweep range
+        if args.range:
+            if len(args.range) == 2:
+                r_min, r_max, n_steps = args.range[0], args.range[1], 25
+            elif len(args.range) >= 3:
+                r_min, r_max, n_steps = args.range[0], args.range[1], int(args.range[2])
+            else:
+                r_min, r_max, n_steps = 0.6, 2.2, 25
+        else:
+            default_ranges = {
+                SensitivityParameter.TYRE_DEG_MULTIPLIER: (0.6, 2.2, 25),
+                SensitivityParameter.PIT_LOSS: (16.0, 32.0, 25),
+                SensitivityParameter.COMPOUND_DELTA_SOFT: (-1.2, 0.0, 25),
+                SensitivityParameter.TRACK_EVOLUTION: (0.0, 1.0, 21),
+                SensitivityParameter.FUEL_PENALTY: (0.020, 0.045, 21),
+            }
+            r_min, r_max, n_steps = default_ranges[chosen_param]
+
+        if args.crossover:
+            print(f"\nComputing exact critical tipping point for {circuit_name} on {chosen_param.value}...")
+            cf = CrossoverFinder(model, compounds)
+            c_pt = cf.find_1_vs_2_stop_crossover(chosen_param, (r_min, r_max))
+            print_crossover_table(c_pt, circuit_name)
+
+        if args.sensitivity:
+            print(f"\nRunning 1D Sensitivity Sweep on {chosen_param.value} [{r_min:.2f} to {r_max:.2f}] for {circuit_name}...")
+            values = np.linspace(r_min, r_max, n_steps)
+            sweeper = ParameterSweep1D(model, compounds)
+
+            if args.strategy:
+                # Custom strategies provided via CLI
+                strategies = [parse_strategy_string(s, compounds) for s in args.strategy]
+                sweep_res = sweeper.sweep_strategies(strategies, chosen_param, values)
+            else:
+                # Re-optimization sweep comparing optimal 1-stop vs optimal 2-stop
+                sweep_res = sweeper.sweep_reoptimization(chosen_param, values, max_stops=args.max_stops)
+
+            print_sensitivity_sweep_table(sweep_res, circuit_name)
+
+            if args.plot:
+                if not args.strategy and chosen_param == SensitivityParameter.TYRE_DEG_MULTIPLIER:
+                    # Generate full 4-panel dashboard!
+                    pit_vals = np.linspace(16.0, 32.0, 25)
+                    sweep_pit = sweeper.sweep_reoptimization(SensitivityParameter.PIT_LOSS, pit_vals, max_stops=args.max_stops)
+                    p2d = PhaseDiagram2D(model, compounds)
+                    phase_res = p2d.compute_phase_map(resolution=(20, 20))
+                    plot_sensitivity_dashboard(sweep_res, sweep_pit, phase_res, save_path="sensitivity_dashboard.png")
+                else:
+                    plot_1d_sensitivity(sweep_res, save_path="sensitivity_curve.png")
+        return
     # Check for strategy optimization request
     if args.optimize:
 
