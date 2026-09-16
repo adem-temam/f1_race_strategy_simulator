@@ -298,6 +298,7 @@ def main() -> None:
 
     # Check for strategy optimization request
     if args.optimize:
+
         from src.optimization import StrategyOptimizer, OptimizationObjective
 
         obj_map = {
@@ -323,6 +324,7 @@ def main() -> None:
         return
 
     # Determine strategies to run
+
     if args.strategy:
         strategies = []
         for s_str in args.strategy:
