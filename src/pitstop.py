@@ -16,6 +16,8 @@ class PitStopModel:
 
     pit_loss: float = 22.0
     stationary_time: float = 2.5
+    vsc_pit_loss: float = 14.0
+    sc_pit_loss: float = 11.5
 
     def __post_init__(self) -> None:
         if self.pit_loss < 0:
@@ -26,8 +28,25 @@ class PitStopModel:
             raise ValueError(
                 f"stationary_time ({self.stationary_time}s) cannot exceed total pit_loss ({self.pit_loss}s)"
             )
+        if self.vsc_pit_loss < self.stationary_time or self.vsc_pit_loss > self.pit_loss:
+            raise ValueError(
+                f"vsc_pit_loss ({self.vsc_pit_loss}s) must be between stationary_time and normal pit_loss"
+            )
+        if self.sc_pit_loss < self.stationary_time or self.sc_pit_loss > self.vsc_pit_loss:
+            raise ValueError(
+                f"sc_pit_loss ({self.sc_pit_loss}s) must be between stationary_time and vsc_pit_loss"
+            )
 
     @property
     def pit_lane_transit_loss(self) -> float:
         """Net loss attributable strictly to driving through the pit lane at the speed limit."""
         return self.pit_loss - self.stationary_time
+
+    def effective_loss(self, condition: str = "normal") -> float:
+        """Return the effective pit loss under racing, VSC, or Safety Car conditions."""
+        cond = condition.lower()
+        if cond == "vsc":
+            return self.vsc_pit_loss
+        elif cond in ("sc", "safety_car"):
+            return self.sc_pit_loss
+        return self.pit_loss

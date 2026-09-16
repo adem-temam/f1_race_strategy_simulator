@@ -35,33 +35,85 @@ class TyreCompound:
         if self.cliff_lap is not None and self.cliff_lap < 1:
             raise ValueError(f"cliff_lap must be at least 1, got {self.cliff_lap}")
 
-    def degradation(self, age: int) -> float:
+    def degradation(self, age: float, circuit_multiplier: float = 1.0) -> float:
         """Calculate the tyre degradation penalty in seconds at tyre age `age`.
 
         The degradation formula is:
-            D(a) = alpha * a + beta * a^2 + cliff_penalty(a)
+            D(a) = (alpha * a + beta * a^2) * circuit_multiplier + cliff_penalty(a)
+        where the onset of the performance cliff accelerates on higher wear circuits:
+            a_cliff,eff = a_cliff / circuit_multiplier
 
         Args:
             age: Tyre age in laps (1 for a fresh tyre on its first lap).
+            circuit_multiplier: Circuit-specific degradation and abrasiveness multiplier (> 0).
 
         Returns:
             Degradation time penalty in seconds.
         """
         if age < 1:
             raise ValueError(f"Tyre age must be >= 1, got {age}")
+        if circuit_multiplier <= 0:
+            raise ValueError(f"circuit_multiplier must be positive, got {circuit_multiplier}")
 
-        deg = self.alpha * age + self.beta * (age**2)
-        if self.cliff_lap is not None and age > self.cliff_lap:
-            deg += self.cliff_coefficient * ((age - self.cliff_lap) ** 2)
+        deg = (self.alpha * age + self.beta * (age**2)) * circuit_multiplier
+        if self.cliff_lap is not None:
+            effective_cliff = self.cliff_lap / circuit_multiplier
+            if age > effective_cliff:
+                deg += self.cliff_coefficient * circuit_multiplier * ((age - effective_cliff) ** 2)
         return deg
 
-    def pace_penalty(self, age: int) -> float:
+    def pace_penalty(self, age: float, circuit_multiplier: float = 1.0) -> float:
         """Calculate the total tyre effect on lap time: inherent delta + degradation.
 
         Args:
             age: Tyre age in laps.
+            circuit_multiplier: Circuit-specific degradation and abrasiveness multiplier.
 
         Returns:
-            Combined delta in seconds: base_delta + degradation(age).
+            Combined delta in seconds: base_delta + degradation(age, circuit_multiplier).
         """
-        return self.base_delta + self.degradation(age)
+        return self.base_delta + self.degradation(age, circuit_multiplier=circuit_multiplier)
+
+
+PIRELLI_COMPOUNDS: dict[str, TyreCompound] = {
+    "C1": TyreCompound(
+        name="C1",
+        base_delta=0.90,
+        alpha=0.030,
+        beta=0.0003,
+        cliff_lap=42,
+        cliff_coefficient=0.030,
+    ),
+    "C2": TyreCompound(
+        name="C2",
+        base_delta=0.45,
+        alpha=0.045,
+        beta=0.0005,
+        cliff_lap=34,
+        cliff_coefficient=0.035,
+    ),
+    "C3": TyreCompound(
+        name="C3",
+        base_delta=0.00,
+        alpha=0.065,
+        beta=0.0008,
+        cliff_lap=28,
+        cliff_coefficient=0.040,
+    ),
+    "C4": TyreCompound(
+        name="C4",
+        base_delta=-0.50,
+        alpha=0.095,
+        beta=0.0012,
+        cliff_lap=20,
+        cliff_coefficient=0.045,
+    ),
+    "C5": TyreCompound(
+        name="C5",
+        base_delta=-0.90,
+        alpha=0.140,
+        beta=0.0020,
+        cliff_lap=14,
+        cliff_coefficient=0.050,
+    ),
+}

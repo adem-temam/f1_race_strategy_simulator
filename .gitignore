@@ -10,16 +10,25 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.pytest_cache/
 build/
 dist/
 *.egg-info/
+
+# Testing, Coverage & Linters
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
 
 # Virtual Environments
 venv/
 .venv/
 env/
 ENV/
+*.env
+.env.*
 
 # Jupyter
 .ipynb_checkpoints/
@@ -28,10 +37,22 @@ ENV/
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
 
 # Large datasets or downloads
 *.csv.gz
 *.parquet
 
-# Plots & Visualizations
+# Plots & Generated Output Data
 *.png
+*.jpg
+*.jpeg
+*.svg
+*.log
+benchmark_output.json
+scratch/
+tmp/
+resolve.py

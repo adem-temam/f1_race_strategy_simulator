@@ -63,12 +63,15 @@ class RaceResult:
                 "stint": r.stint_index + 1,
                 "compound": r.compound,
                 "tyre_age": r.tyre_age,
+                "eff_tyre_age": round(r.effective_tyre_age, 2),
                 "fuel_kg": round(r.fuel_kg, 2),
                 "base_time": round(r.base_time, 3),
                 "compound_delta": round(r.compound_delta, 3),
                 "tyre_deg": round(r.tyre_degradation, 3),
                 "fuel_penalty": round(r.fuel_penalty, 3),
                 "track_evo": round(r.track_evolution, 3),
+                "in_traffic": r.in_traffic,
+                "traffic_pen": round(r.traffic_penalty, 3),
                 "pit_loss": round(r.pit_loss, 3),
                 "lap_time": round(r.lap_time, 3),
                 "effective_time": round(r.effective_lap_time, 3),
@@ -98,6 +101,7 @@ def simulate_race(
     model: RaceModel,
     validate: bool = True,
     enforce_two_compounds: bool = True,
+    safety_car_laps: Optional[dict[int, str]] = None,
 ) -> RaceResult:
     """Execute a deterministic race simulation for a given strategy and physical model.
 
@@ -106,6 +110,7 @@ def simulate_race(
         model: Physical race model combining circuit, fuel, tyres, and pit stops.
         validate: Whether to validate strategy length and rules before running.
         enforce_two_compounds: Whether to require at least two distinct tyre compounds.
+        safety_car_laps: Optional mapping of lap numbers to condition ('vsc' or 'safety_car').
 
     Returns:
         RaceResult object containing full lap telemetry and performance metrics.
@@ -126,19 +131,49 @@ def simulate_race(
     cumulative_time = 0.0
 
     current_lap = 1
+    laps_in_traffic = 0
+
     for stint_idx, stint in enumerate(strategy.stints):
+        effective_tyre_age = 0.0
         for tyre_age in range(1, stint.laps + 1):
             is_pit = current_lap in pit_lap_set
+            pit_condition = (
+                safety_car_laps.get(current_lap, "normal")
+                if safety_car_laps and current_lap in safety_car_laps
+                else "normal"
+            )
+            
+            in_traffic = laps_in_traffic > 0
+            if in_traffic:
+                laps_in_traffic -= 1
+                age_increment = 1.0 * model.circuit.traffic_config.dirty_air_deg_multiplier
+            else:
+                age_increment = 1.0
+                
+            effective_tyre_age += age_increment
+
             record = model.compute_lap(
                 lap=current_lap,
                 stint_index=stint_idx,
                 compound=stint.compound,
                 tyre_age=tyre_age,
+                effective_tyre_age=effective_tyre_age,
                 is_pit_lap=is_pit,
+                in_traffic=in_traffic,
                 previous_cumulative_time=cumulative_time,
+                pit_condition=pit_condition,
             )
             lap_records.append(record)
             cumulative_time = record.cumulative_time
+            
+            if is_pit:
+                actual_pit_loss = model.pitstop_model.effective_loss(pit_condition)
+                traffic_deficit = max(
+                    0.0,
+                    actual_pit_loss - (current_lap * model.circuit.traffic_config.field_spread_rate)
+                )
+                laps_in_traffic = int(traffic_deficit * model.circuit.traffic_config.overtake_difficulty)
+
             current_lap += 1
 
     return RaceResult(

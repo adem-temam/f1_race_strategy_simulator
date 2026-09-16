@@ -105,7 +105,7 @@ def simulate_monte_carlo(
 
     # 2. Extract deterministic components
     base_components = np.array([
-        r.base_time + r.compound_delta + r.fuel_penalty - r.track_evolution
+        r.base_time + r.compound_delta + r.fuel_penalty - r.track_evolution + r.traffic_penalty
         for r in lap_records
     ])
     deg_components = np.array([r.tyre_degradation for r in lap_records])
