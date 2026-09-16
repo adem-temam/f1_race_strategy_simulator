@@ -247,9 +247,20 @@ def main() -> None:
         print_comparison_table_mc(results, circuit_name, total_laps)
         
         if args.plot:
-            from src.visualization import plot_strategy_distributions, plot_win_probability_matrix
+            from src.visualization import (
+                plot_monte_carlo_dashboard,
+                plot_strategy_boxplots,
+                plot_strategy_cdf,
+                plot_strategy_distributions,
+                plot_strategy_histograms,
+                plot_win_probability_matrix,
+            )
             plot_strategy_distributions(results, save_path="mc_distributions.png")
+            plot_strategy_histograms(results, save_path="mc_histograms.png")
+            plot_strategy_cdf(results, save_path="mc_cdf.png")
+            plot_strategy_boxplots(results, save_path="mc_boxplots.png")
             plot_win_probability_matrix(results, save_path="mc_win_matrix.png")
+            plot_monte_carlo_dashboard(results, save_path="mc_dashboard.png")
     else:
         # Run deterministic simulations
         results = [
