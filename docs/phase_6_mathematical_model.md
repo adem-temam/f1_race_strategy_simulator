@@ -109,10 +109,12 @@ $$\Delta T_{\text{SC}} = t_{\text{pit}}^{\text{nominal}} - t_{\text{pit}}^{\text
 ### 4.2 Dynamic Programming with Opportunistic Neutralizations
 
 Let $l_{\text{SC}}$ be the lap at which the Safety Car is deployed. For a car running on stint $k$ with tyre age $a$, the decision to pit or stay out is governed by the Bellman comparison:
-$$V_{\text{SC}}(l_{\text{SC}}, c, a) = \min \begin{cases}
-V\big(l_{\text{SC}} + 1, c, a + 1\big) + T_{\text{SC}}, & \text{[STAY OUT]} \\
-t_{\text{pit}}^{\text{SC}} + \min\limits_{c' \neq c} \Big[ V\big(l_{\text{SC}} + 1, c', 1\big) + T_{\text{SC}} \Big], & \text{[PIT FOR NEW TYRES]}
-\end{cases}$$
+$$
+V_{\text{SC}}(l_{\text{SC}}, c, a) = \min \begin{cases}
+V\big(l_{\text{SC}} + 1, c, a + 1\big) + T_{\text{SC}}, & \text{Stay out} \\
+t_{\text{pit}}^{\text{SC}} + \min\limits_{c' \neq c} \Big[ V\big(l_{\text{SC}} + 1, c', 1\big) + T_{\text{SC}} \Big], & \text{Pit for new tyres}
+\end{cases}
+$$
 
 If the car pits:
 * It consumes a pit stop at a $35 - 40\%$ discount.
