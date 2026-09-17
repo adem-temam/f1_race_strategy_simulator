@@ -64,7 +64,20 @@ __all__ = [
     "plot_empirical_degradation_fit",
     "plot_lap_residuals",
     "plot_strategy_backtest_gantt",
+    "Scenario",
+    "ScenarioEngine",
+    "ScenarioPerturbation",
+    "ScenarioResult",
+    "PRESET_SCENARIOS",
 ]
+
+from src.scenarios import (
+    PRESET_SCENARIOS,
+    Scenario,
+    ScenarioEngine,
+    ScenarioPerturbation,
+    ScenarioResult,
+)
 
 from src.data_pipeline import (
     HistoricalLap,

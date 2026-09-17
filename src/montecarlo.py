@@ -29,24 +29,34 @@ class MonteCarloResult:
 
     @property
     def mean_time(self) -> float:
+        if len(self.race_times) == 0:
+            return self.deterministic_result.total_time
         return float(np.mean(self.race_times))
 
     @property
     def median_time(self) -> float:
+        if len(self.race_times) == 0:
+            return self.deterministic_result.total_time
         return float(np.median(self.race_times))
 
     @property
     def std_dev(self) -> float:
+        if len(self.race_times) == 0:
+            return 0.0
         return float(np.std(self.race_times))
 
     @property
     def p05_time(self) -> float:
         """5th percentile (Best-case scenario)."""
+        if len(self.race_times) == 0:
+            return self.deterministic_result.total_time
         return float(np.percentile(self.race_times, 5))
 
     @property
     def p95_time(self) -> float:
         """95th percentile (Worst-case scenario / Value at Risk)."""
+        if len(self.race_times) == 0:
+            return self.deterministic_result.total_time
         return float(np.percentile(self.race_times, 95))
 
     def format_time(self, seconds: float) -> str:

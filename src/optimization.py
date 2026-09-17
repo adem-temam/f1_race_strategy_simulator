@@ -606,6 +606,7 @@ class StrategyOptimizer:
             # For stochastic objectives (EXPECTED_TIME or MIN_RISK_P95):
             # Evaluate top candidates (up to 40) under Monte Carlo simulation
             stochastic_params = StochasticParameters()
+            iters = mc_iterations if mc_iterations > 0 else 200
             pool_size = min(40, len(ranked_candidates))
             top_subset = ranked_candidates[:pool_size]
             all_points: list[ParetoPoint] = []
@@ -613,7 +614,7 @@ class StrategyOptimizer:
 
             for strat, det_time in top_subset:
                 mc_res = simulate_monte_carlo(
-                    strat, self.model, stochastic_params, n_iterations=mc_iterations, seed=42
+                    strat, self.model, stochastic_params, n_iterations=iters, seed=42
                 )
                 point = ParetoPoint(
                     strategy=strat,

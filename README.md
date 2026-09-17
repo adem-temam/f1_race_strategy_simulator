@@ -60,7 +60,16 @@ race_strategy_simulator/
 │   ├── phase_2_mathematical_model.md
 │   ├── phase_3_mathematical_model.md
 │   ├── phase_4_mathematical_model.md
-│   └── phase_5_mathematical_model.md
+│   ├── phase_5_mathematical_model.md
+│   └── phase_6_mathematical_model.md
+├── notebooks/           # Interactive demonstration Jupyter notebook curriculum (Phases 1-6)
+│   ├── 01_synthetic_model_exploration.ipynb
+│   ├── 02_monte_carlo_and_optimization.ipynb
+│   ├── 03_sensitivity_and_decision_maps.ipynb
+│   ├── 04_historical_data_validation.ipynb
+│   └── 05_scenario_analysis_and_what_if.ipynb
+├── scripts/
+│   └── generate_notebooks.py # Programmatic notebook suite generator
 ├── src/
 │   ├── tyres.py         # TyreCompound dataclass, wear curves & Pirelli compound specs
 │   ├── fuel.py          # FuelModel consumption & weight penalty calculations
@@ -72,9 +81,14 @@ race_strategy_simulator/
 │   ├── stochastic.py    # Stochastic noise parameters & probability distributions
 │   ├── montecarlo.py    # Vectorized Monte Carlo engine & win probability matrix
 │   ├── optimization.py  # DP Solver, Combinatorial Grid Search, Pit Windows & Pareto
+│   ├── sensitivity.py   # 1D sweeps, Brent's root-finding & 2D decision phase boundaries
 │   ├── data_pipeline.py # OpenF1 REST API client, local JSON caching & clean telemetry filter
 │   ├── estimation.py    # Fuel mass correction & multi-driver polynomial regression for wear
 │   ├── validation.py    # Historical strategy backtester, accuracy metrics & discrepancy diagnostics
+│   ├── scenarios.py     # What-If scenario engine, counterfactual perturbations & regret
+│   ├── dashboard/       # Interactive FastAPI server & dark-theme telemetry web UI
+│   │   ├── app.py       # REST API endpoints & server setup
+│   │   └── static/      # index.html, styles.css, app.js
 │   └── visualization.py # Empirical wear curves, residuals, Gantt backtest & executive dashboards
 ├── tests/
 │   ├── test_data_pipeline.py
@@ -91,9 +105,13 @@ race_strategy_simulator/
 │   ├── test_montecarlo.py
 │   ├── test_visualization.py
 │   ├── test_optimization.py
-│   └── test_sensitivity.py
-├── run_simulation.py    # Interactive CLI runner with simulation, optimization, sensitivity & validation
+│   ├── test_sensitivity.py
+│   ├── test_scenarios.py
+│   ├── test_dashboard_api.py
+│   └── test_notebooks.py
+├── run_simulation.py    # Interactive CLI runner (simulation, optimization, sensitivity, validation, scenarios, dashboard)
 ├── run_validation.py    # Dedicated Phase 5 validation CLI runner
+├── run_dashboard.py     # Dedicated Phase 6 interactive dashboard runner
 ├── requirements.txt
 └── README.md
 ```
@@ -161,25 +179,59 @@ python3 run_validation.py --circuit monza --plot
 python3 run_validation.py --circuit all
 ```
 
-### 5. Evaluate Preset Strategies via CLI
+### 5. Interactive Strategy Dashboard (Phase 6)
+Launch the dark-theme web dashboard powered by FastAPI and Chart.js:
+```bash
+# Launch dashboard on http://127.0.0.1:8000 with automatic browser opening
+python3 run_dashboard.py
+
+# Alternatively, launch directly via the CLI runner
+python3 run_simulation.py --dashboard --port 8000
+```
+
+### 6. What-If Counterfactual Scenario Analysis (Phase 6)
+Evaluate counterfactual track interventions, regulation changes, Safety Cars, and calculate Strategic Regret:
+```bash
+# Run a specific preset scenario (e.g., severe thermal degradation spike)
+python3 run_simulation.py --circuit bahrain --scenario high_deg
+
+# Evaluate an unexpected Safety Car neutralization at Lap 18
+python3 run_simulation.py --circuit bahrain --scenario safety_car_lap18
+
+# Run the complete 11-scenario counterfactual matrix across all tactical events
+python3 run_simulation.py --circuit bahrain --run-all-scenarios
+```
+
+### 7. Interactive Demonstration Notebooks (Phase 6)
+Explore the interactive curriculum spanning Phases 1 through 6 in `notebooks/`:
+```bash
+jupyter notebook notebooks/
+```
+* `01_synthetic_model_exploration.ipynb`: Physics engine, tyre wear curves, and fuel mass burn.
+* `02_monte_carlo_and_optimization.ipynb`: Stochastic risk modeling, win probability matrix, and Bellman DP.
+* `03_sensitivity_and_decision_maps.ipynb`: Brent root-finding crossover tipping points and 2D phase diagrams.
+* `04_historical_data_validation.ipynb`: OpenF1 telemetry ingestion, OLS regression, and Verstappen/Leclerc backtesting.
+* `05_scenario_analysis_and_what_if.ipynb`: Counterfactual perturbations, strategic regret, and 2026 regulations.
+
+### 8. Evaluate Preset Strategies via CLI
 Run the default strategy comparison on Bahrain GP (57 laps):
 ```bash
 python3 run_simulation.py --circuit bahrain
 ```
 
-### 5. Test Custom Stints
+### 9. Test Custom Stints
 Specify custom compound sequences using shorthand (`S15-M21-S21`, `M26-H31`):
 ```bash
 python3 run_simulation.py --circuit bahrain -s "S15-M21-S21" -s "M26-H31" -s "S12-H45"
 ```
 
-### 6. Inspect Lap Telemetry
+### 10. Inspect Lap Telemetry
 View per-lap physical breakdown (degradation, remaining fuel, effective lap time):
 ```bash
 python3 run_simulation.py --strategy "M26-H31" --laps
 ```
 
-### 7. Monte Carlo Probabilistic Simulation
+### 11. Monte Carlo Probabilistic Simulation
 Run thousands of iterations introducing real-world stochastic variance:
 ```bash
 # Run 10,000 iterations to calculate Expected Time, Risk (P95), and Head-to-Head Win Probability
@@ -215,33 +267,21 @@ for window in result.pit_windows:
     print(f"Stop {window.pit_index}: Window Laps {window.window_open_lap}–{window.window_close_lap} (Size: {window.window_size}L)")
 ```
 
-### Sensitivity Analysis & Decision Boundaries (Phase 4)
+### What-If Scenario Analysis (Phase 6)
 ```python
-from src.config import create_race_model, get_circuit_compounds
-from src.sensitivity import CrossoverFinder, PhaseDiagram2D, SensitivityParameter
+from src.model import RaceModel
+from src.config import BAHRAIN_CONFIG
+from src.scenarios import ScenarioEngine, PRESET_SCENARIOS
 
-model = create_race_model("bahrain")
-compounds = get_circuit_compounds("bahrain")
+model = RaceModel(BAHRAIN_CONFIG)
+engine = ScenarioEngine(model)
 
-# 1. Find exact critical tipping point where 2-stop beats 1-stop
-finder = CrossoverFinder(model, compounds)
-c_pt = finder.find_1_vs_2_stop_crossover(
-    param=SensitivityParameter.TYRE_DEG_MULTIPLIER,
-    search_range=(0.8, 1.6),
-)
-print(f"Crossover Degradation Multiplier: {c_pt.crossover_value:.4f}")
-print(f"Circuit Nominal Baseline: {c_pt.nominal_value:.4f}")
-print(f"Distance to Boundary: {c_pt.distance_from_nominal:+.4f}")
-
-# 2. Compute 2D Decision Phase Diagram
-phase_mapper = PhaseDiagram2D(model, compounds)
-phase_result = phase_mapper.compute_phase_map(
-    param_x=SensitivityParameter.PIT_LOSS,
-    x_range=(16.0, 32.0),
-    param_y=SensitivityParameter.TYRE_DEG_MULTIPLIER,
-    y_range=(0.6, 2.2),
-)
-print(f"Nominal Operating Regime: {phase_result.nominal_stops}-Stop Strategy")
+# Evaluate high thermal degradation spike scenario (+50% tyre wear)
+res = engine.evaluate_scenario("high_deg")
+print(f"Scenario: {res.scenario_name}")
+print(f"Strategic Regret: {res.strategic_regret:.2f}s")
+print(f"Adapted Optimal Strategy: {res.adapted_best_strategy}")
+print(f"Strategy Pivot Triggered: {res.strategy_pivoted}")
 ```
 
 ---
@@ -253,7 +293,7 @@ Run the automated test suite with `pytest`:
 pytest -v
 ```
 
-All 76 unit tests verify model mechanics, fuel consumption conservation, pit stop accounting, FIA rule compliance, Bellman DAG optimality, Pareto frontiers, Brent crossover precision, 2D phase maps, OpenF1 offline cache ingestion, empirical polynomial wear regression, strategy backtests, and causal discrepancy diagnostics.
+All 100 unit tests verify physical model mechanics, fuel mass conservation, pit stop transit accounting, FIA rule compliance, Bellman DAG optimality, Pareto risk frontiers, Brent crossover root-finding, 2D phase boundaries, OpenF1 offline cache ingestion, empirical polynomial wear regression, strategy backtests, causal discrepancy diagnostics, counterfactual scenario permutations, FastAPI REST endpoints, and Jupyter notebook structures.
 
 ---
 
@@ -264,4 +304,5 @@ All 76 unit tests verify model mechanics, fuel consumption conservation, pit sto
 - [x] **Phase 3: Strategy Optimization Engine** (Dynamic Programming DAG, Combinatorial Search, tactical pit windows, Pareto risk modeling)
 - [x] **Phase 4: Sensitivity Analysis & Decision Phase Maps** (crossover tipping points, Brent's method root-finding, 2D decision phase boundaries, elasticity, and minimax regret)
 - [x] **Phase 5: Real-World Historical Data Integration & Validation** (OpenF1 ingestion, local offline JSON cache, fuel correction, empirical polynomial regression for tyre wear, strategy backtesting against 2024 winners, and discrepancy diagnostics)
-- [ ] **Phase 6: Interactive Dashboard & Scientific Visualization**
+- [x] **Phase 6: Interactive Dashboard, Scenario Analysis & Demonstration Notebooks** (FastAPI REST server, dark-theme telemetry web UI, What-If counterfactual scenario engine, strategic regret evaluation, and 5 interactive Jupyter curriculum notebooks)
+
