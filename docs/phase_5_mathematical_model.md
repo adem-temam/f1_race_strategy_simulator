@@ -139,7 +139,7 @@ To evaluate model fidelity, the calibrated simulator executes strategy backtests
    $$\text{RMSE}_{\text{pace}} = \sqrt{\frac{1}{|\mathcal{L}_{\text{clean}}|} \sum_{n \in \mathcal{L}_{\text{clean}}} \big( T_{\text{sim}}(n) - T_{\text{actual}}(n) \big)^2}$$
 4. **Pit Window Coverage**:
    For actual pit stop lap $n_{\text{pit}}$, evaluate whether it falls within the tactical pit window:
-   $$n_{\text{pit}} \in [n_{\text{window\_open}}, n_{\text{window\_close}}]$$
+   $$n_{\text{pit}} \in [n_{\text{open}}, n_{\text{close}}]$$
 5. **Relative Race Duration Error**:
    $$\epsilon_{\text{race}} = \frac{|T_{\text{race, sim}} - T_{\text{race, actual}}|}{T_{\text{race, actual}}} \times 100\%$$
 

@@ -53,7 +53,7 @@ A candidate strategy $S = (\mathbf{c}, \boldsymbol{\ell})$ belongs to the feasib
    Each stint must be long enough to be physically realistic and short enough to avoid catastrophic structural tyre failure (puncture risk):
    $$\ell_{\min} \le \ell_k \le \ell_{\max}(c_k) \quad \forall k \in \{1, \dots, K\}$$
    * $\ell_{\min} \ge 3$ (minimum laps to warm tyres and complete pit cycle).
-   * $\ell_{\max}(c_k) = \min\big(N, \lfloor 1.4 \times \text{cliff\_lap}(c_k) \rfloor\big)$.
+   * $\ell_{\max}(c_k) = \min\big(N, \lfloor 1.4 \times L_{\text{cliff}}(c_k) \rfloor\big)$.
 
 4. **Maximum Pit Stop Cardinality:**
    The number of pit stops is bounded to eliminate non-competitive hyper-frequent stops:
@@ -123,7 +123,7 @@ Let $V(n, c, a, u)$ denote the minimum time to complete the remainder of the rac
 
 $$V(n, c, a, u) = \min \begin{cases} 
 T_{\text{lap}}(n, c, a) + V(n+1, c, a+1, u) & \text{[Action: STAY]} \\
-T_{\text{lap}}(n, c, a) + T_{\text{pit\_loss}} + \min_{c' \ne c} V(n+1, c', 1, 1) & \text{[Action: PIT to } c'\text{]}
+T_{\text{lap}}(n, c, a) + t_{\text{pit}} + \min_{c' \ne c} V(n+1, c', 1, 1) & \text{[Action: PIT to } c'\text{]}
 \end{cases}$$
 
 #### Boundary Conditions (Terminal Lap $N$)

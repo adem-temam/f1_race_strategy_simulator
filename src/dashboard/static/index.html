@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1 Race Strategy Simulator & Analytics</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Chart.js local vendor bundle for offline high-speed graphs -->
+  <script src="/static/vendor/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      <span class="f1-badge">F1</span>
+      <h1>STRATEGY SIMULATOR & ANALYSIS</h1>
+    </div>
+    <div class="header-controls">
+      <div class="circuit-selector-group">
+        <label for="circuitSelect">GRAND PRIX:</label>
+        <select id="circuitSelect" class="custom-select">
+          <option value="bahrain">Sakhir (Bahrain GP)</option>
+          <option value="barcelona">Barcelona (Spanish GP)</option>
+          <option value="monza">Monza (Italian GP)</option>
+        </select>
+      </div>
+      <span id="circuitLapsBadge" class="circuit-pill">57 Laps</span>
+      <span id="circuitBasePaceBadge" class="circuit-pill">Base: 93.5s</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" data-tab="simulatorTab">
+      <span>🏎️</span> Race Simulator
+    </button>
+    <button class="tab-btn" data-tab="optimizerTab">
+      <span>🧠</span> Strategy Optimizer
+    </button>
+    <button class="tab-btn" data-tab="monteCarloTab">
+      <span>🎲</span> Monte Carlo Explorer
+    </button>
+    <button class="tab-btn" data-tab="sensitivityTab">
+      <span>📈</span> Sensitivity & Phase Maps
+    </button>
+    <button class="tab-btn" data-tab="validationTab">
+      <span>🏁</span> Historical Validation
+    </button>
+    <button class="tab-btn" data-tab="scenariosTab">
+      <span>⚡</span> What-If Scenarios
+    </button>
+  </nav>
+
+  <main class="container">
+
+    <!-- TAB 1: RACE SIMULATOR -->
+    <section id="simulatorTab" class="tab-content active">
+      <div class="grid-2col">
+        <!-- Control Panel -->
+        <div class="card">
+          <h2 class="card-title"><span class="icon">⚙️</span> Strategy Configuration</h2>
+
+          <div class="control-group">
+            <label>STRATEGIES TO EVALUATE</label>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Format: S(Soft), M(Medium), H(Hard) + laps (e.g. <code>S15-M21-S21</code>).
+            </p>
+            <div id="strategyInputsContainer">
+              <input type="text" class="strategy-input-field" value="S15-M21-S21" style="margin-bottom: 0.4rem;">
+              <input type="text" class="strategy-input-field" value="M26-H31" style="margin-bottom: 0.4rem;">
+              <input type="text" class="strategy-input-field" value="S14-H22-M21" style="margin-bottom: 0.4rem;">
+            </div>
+            <button id="addStrategyInputBtn" class="btn-secondary" style="width: 100%; margin-top: 0.25rem;">+ Add Strategy</button>
+          </div>
+
+          <div class="control-group">
+            <div class="control-row">
+              <label>TYRE DEGRADATION MULTIPLIER</label>
+              <span id="simDegVal" class="val-display">1.00x</span>
+            </div>
+            <input type="range" id="simDegSlider" min="0.5" max="2.0" step="0.05" value="1.0">
+          </div>
+
+          <div class="control-group">
+            <div class="control-row">
+              <label>PIT STOP LOSS (S)</label>
+              <span id="simPitVal" class="val-display">22.0s</span>
+            </div>
+            <input type="range" id="simPitSlider" min="15.0" max="32.0" step="0.5" value="22.0">
+          </div>
+
+          <button id="runSimulationBtn" class="btn-primary">
+            <span>Simulate Strategies</span>
+          </button>
+        </div>
+
+        <!-- Simulation Charts & Leaderboard -->
+        <div>
+          <div class="card" style="margin-bottom: 1.25rem;">
+            <h2 class="card-title"><span class="icon">📊</span> Lap-by-Lap Pace & Degradation Profile</h2>
+            <div class="chart-container">
+              <canvas id="simPaceChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title"><span class="icon">🏆</span> Simulation Leaderboard</h2>
+            <div class="table-wrapper">
+              <table class="f1-table" id="simResultsTable">
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Strategy</th>
+                    <th>Stops</th>
+                    <th>Stints</th>
+                    <th>Race Time</th>
+                    <th>Delta to P1</th>
+                  </tr>
+                </thead>
+                <tbody id="simResultsBody">
+                  <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Click "Simulate Strategies" to run evaluation.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: STRATEGY OPTIMIZER -->
+    <section id="optimizerTab" class="tab-content">
+      <div class="grid-2col">
+        <!-- Optimizer Controls -->
+        <div class="card">
+          <h2 class="card-title"><span class="icon">⚡</span> Bellman Dynamic Programming DAG Solver</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Discovers the global mathematically optimal strategy via Bellman backward induction in &lt;15ms.
+          </p>
+
+          <div class="control-group">
+            <label>MAXIMUM PIT STOPS</label>
+            <select id="optMaxStops" class="custom-select" style="width: 100%;">
+              <option value="1">1 Stop (2 Stints)</option>
+              <option value="2" selected>2 Stops (3 Stints)</option>
+              <option value="3">3 Stops (4 Stints)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label>OPTIMIZATION OBJECTIVE</label>
+            <select id="optObjective" class="custom-select" style="width: 100%;">
+              <option value="time" selected>Minimum Deterministic Time</option>
+              <option value="risk">Minimum Downside Risk (P95 VaR)</option>
+            </select>
+          </div>
+
+          <button id="runOptimizerBtn" class="btn-primary">
+            <span>Discover Optimal Strategy</span>
+          </button>
+
+          <!-- Optimal Strategy Display Card -->
+          <div id="optimalStrategyCard" style="display: none; margin-top: 1.5rem; background: #14141d; border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 1.25rem;">
+            <div style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 700; text-transform: uppercase;">Globally Optimal Strategy</div>
+            <div id="optimalStrategyName" style="font-size: 1.3rem; font-weight: 800; color: #fff; margin: 0.4rem 0;">-</div>
+            <div id="optimalStrategyTime" style="font-family: var(--font-mono); font-size: 1.1rem; color: #22c55e;">-</div>
+            <div id="optimalSolveMetrics" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Evaluated 0 candidates in 0.00s</div>
+          </div>
+        </div>
+
+        <!-- Optimizer Results & Tactical Pit Windows -->
+        <div>
+          <!-- Pit Windows Card -->
+          <div class="card" style="margin-bottom: 1.25rem;">
+            <h2 class="card-title"><span class="icon">🎯</span> Tactical Undercut / Overcut Pit Windows</h2>
+            <div id="pitWindowsContainer" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <p style="color: var(--text-muted); font-size: 0.85rem;">Run the optimizer to compute pit windows.</p>
+            </div>
+          </div>
+
+          <!-- Optimizer Leaderboard Table -->
+          <div class="card" style="margin-bottom: 1.25rem;">
+            <h2 class="card-title"><span class="icon">📋</span> Strategy Ranking & Stop Comparison</h2>
+            <div class="table-wrapper">
+              <table class="f1-table" id="optLeaderboardTable">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Strategy</th>
+                    <th>Stops</th>
+                    <th>Race Time</th>
+                    <th>Gap to P1</th>
+                  </tr>
+                </thead>
+                <tbody id="optLeaderboardBody">
+                  <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Run optimizer to view leaderboard.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Pareto Risk-Reward Chart -->
+          <div class="card">
+            <h2 class="card-title"><span class="icon">⚖️</span> Pareto Frontier (Pace vs Risk P95)</h2>
+            <div class="chart-container-sm">
+              <canvas id="optParetoChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MONTE CARLO EXPLORER -->
+    <section id="monteCarloTab" class="tab-content">
+      <div class="grid-2col">
+        <!-- MC Controls -->
+        <div class="card">
+          <h2 class="card-title"><span class="icon">🎲</span> Uncertainty Parameters</h2>
+
+          <div class="control-group">
+            <div class="control-row">
+              <label>ITERATIONS (N)</label>
+              <span id="mcIterVal" class="val-display">1,000</span>
+            </div>
+            <input type="range" id="mcIterSlider" min="500" max="5000" step="500" value="1000">
+          </div>
+
+          <div class="control-group">
+            <div class="control-row">
+              <label>DRIVER PACE NOISE (σ_lap)</label>
+              <span id="mcLapNoiseVal" class="val-display">0.40s</span>
+            </div>
+            <input type="range" id="mcLapNoiseSlider" min="0.1" max="1.0" step="0.05" value="0.40">
+          </div>
+
+          <div class="control-group">
+            <div class="control-row">
+              <label>PIT STOP SKEW / DELAY (σ_stop)</label>
+              <span id="mcPitSigmaVal" class="val-display">0.80</span>
+            </div>
+            <input type="range" id="mcPitSigmaSlider" min="0.2" max="1.5" step="0.1" value="0.80">
+          </div>
+
+          <div class="control-group">
+            <div class="control-row">
+              <label>TYRE WEAR UNCERTAINTY (σ_deg)</label>
+              <span id="mcDegStdVal" class="val-display">5%</span>
+            </div>
+            <input type="range" id="mcDegStdSlider" min="0.01" max="0.15" step="0.01" value="0.05">
+          </div>
+
+          <button id="runMonteCarloBtn" class="btn-primary">
+            <span>Simulate Stochastic Outcomes</span>
+          </button>
+        </div>
+
+        <!-- MC Distributions & Win Matrix -->
+        <div>
+          <!-- Distribution KDE & Histograms -->
+          <div class="card" style="margin-bottom: 1.25rem;">
+            <h2 class="card-title"><span class="icon">📈</span> Outcome Probability Density Distributions</h2>
+            <div class="chart-container">
+              <canvas id="mcDensityChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Risk Metrics & Head-to-Head Win Probability -->
+          <div class="grid-2col" style="grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+            <div class="card">
+              <h2 class="card-title"><span class="icon">📊</span> Statistical Risk Summary</h2>
+              <div class="table-wrapper">
+                <table class="f1-table" id="mcStatsTable">
+                  <thead>
+                    <tr>
+                      <th>Strategy</th>
+                      <th>Mean</th>
+                      <th>Std</th>
+                      <th>P95 VaR</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mcStatsBody">
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Run Monte Carlo to view statistics.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title"><span class="icon">🏆</span> Win Probability Matrix</h2>
+              <div class="table-wrapper">
+                <table class="f1-table" id="mcWinMatrixTable">
+                  <thead>
+                    <tr>
+                      <th>Strategy A vs B</th>
+                      <th>Win %</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mcWinMatrixBody">
+                    <tr><td colspan="2" style="text-align:center; color: var(--text-muted);">Run Monte Carlo to view win probabilities.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SENSITIVITY & PHASE MAPS -->
+    <section id="sensitivityTab" class="tab-content">
+      <div class="grid-2col">
+        <!-- Sensitivity Controls -->
+        <div class="card">
+          <h2 class="card-title"><span class="icon">🧭</span> Sensitivity Sweeps</h2>
+
+          <div class="control-group">
+            <label>SWEEP PARAMETER</label>
+            <select id="sensParamSelect" class="custom-select" style="width: 100%;">
+              <option value="deg_multiplier" selected>Tyre Degradation Multiplier</option>
+              <option value="pit_loss">Pit Stop Loss Duration</option>
+              <option value="soft_delta">Soft Tyre Compound Advantage</option>
+              <option value="track_evolution">Track Rubbering Evolution</option>
+              <option value="fuel_penalty">Fuel Weight Sensitivity</option>
+            </select>
+          </div>
+
+          <div class="grid-2col" style="grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">MIN VALUE</label>
+              <input type="number" id="sensRangeMin" value="0.6" step="0.1">
+            </div>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">MAX VALUE</label>
+              <input type="number" id="sensRangeMax" value="2.0" step="0.1">
+            </div>
+          </div>
+
+          <button id="runSensitivityBtn" class="btn-primary" style="margin-bottom: 1.25rem;">
+            <span>Run Parameter Sweep</span>
+          </button>
+
+          <!-- Tipping Point Card -->
+          <div id="crossoverPointCard" style="display: none; background: #151520; border: 1px solid var(--f1-red); border-radius: 8px; padding: 1.25rem;">
+            <div style="font-size: 0.75rem; color: var(--f1-red); font-weight: 700; text-transform: uppercase;">Critical Tipping Point (Root-Finding)</div>
+            <div id="crossoverVal" style="font-size: 1.4rem; font-weight: 800; color: #fff; margin: 0.4rem 0;">-</div>
+            <div id="crossoverMsg" style="font-size: 0.82rem; color: var(--text-muted);">-</div>
+          </div>
+        </div>
+
+        <!-- Sensitivity Visualizer -->
+        <div>
+          <!-- 1D Sweep Chart -->
+          <div class="card" style="margin-bottom: 1.25rem;">
+            <h2 class="card-title"><span class="icon">📉</span> 1D Parameter Sensitivity & Lower Envelope</h2>
+            <div class="chart-container">
+              <canvas id="sens1DChart"></canvas>
+            </div>
+          </div>
+
+          <!-- 2D Decision Phase Boundary Diagram -->
+          <div class="card">
+            <div class="control-row">
+              <h2 class="card-title" style="margin-bottom: 0;"><span class="icon">🗺️</span> 2D Decision Boundary Phase Diagram (Pit Loss vs Degradation)</h2>
+              <button id="runPhaseMapBtn" class="btn-secondary">Compute Phase Map</button>
+            </div>
+            <div style="margin-top: 1rem; position: relative; height: 320px; display: flex; justify-content: center; align-items: center; background: #14141c; border-radius: 6px;">
+              <canvas id="phaseMapCanvas" width="600" height="300"></canvas>
+            </div>
+            <div id="phaseMapLegend" style="display: flex; justify-content: center; gap: 2rem; margin-top: 0.75rem; font-size: 0.8rem;">
+              <div><span style="display:inline-block; width:12px; height:12px; background:#10b981; border-radius:2px; margin-right:6px;"></span>1-Stop Dominant</div>
+              <div><span style="display:inline-block; width:12px; height:12px; background:#e10600; border-radius:2px; margin-right:6px;"></span>2-Stop Dominant</div>
+              <div><span style="display:inline-block; width:12px; height:12px; background:#38bdf8; border-radius:50%; margin-right:6px;"></span>Circuit Baseline Operating Point</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: HISTORICAL VALIDATION -->
+    <section id="validationTab" class="tab-content">
+      <div class="grid-3col" style="margin-bottom: 1.25rem;">
+        <div class="metric-box">
+          <div class="metric-label">Physics Duration Error</div>
+          <div id="valPhysicsError" class="metric-value">0.42%</div>
+          <div class="metric-sub">&lt; 0.55% target across all GPs</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Clean Lap RMSE</div>
+          <div id="valCleanRMSE" class="metric-value">0.78s</div>
+          <div class="metric-sub">Pace fidelity per clean lap</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Stop Count Agreement</div>
+          <div id="valStopsMatched" class="metric-value">MATCHED</div>
+          <div class="metric-sub">Historical vs Model-Recommended</div>
+        </div>
+      </div>
+
+      <div class="grid-2col">
+        <!-- Fitted Wear Parameters Table -->
+        <div class="card">
+          <h2 class="card-title"><span class="icon">🔬</span> Empirical Tyre Wear Regression (α, β)</h2>
+          <div class="table-wrapper">
+            <table class="f1-table" id="valParamsTable">
+              <thead>
+                <tr>
+                  <th>Compound</th>
+                  <th>Linear α (s/lap)</th>
+                  <th>Quadratic β (s/lap²)</th>
+                  <th>Pace Offset Δ</th>
+                  <th>Laps</th>
+                </tr>
+              </thead>
+              <tbody id="valParamsBody">
+                <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Loading historical telemetry...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Strategy Backtest & Discrepancies -->
+        <div class="card">
+          <h2 class="card-title"><span class="icon">📋</span> Backtest Strategy Comparison & Causal Diagnostics</h2>
+          <div style="background: #14141c; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">ACTUAL WINNING STRATEGY</div>
+            <div id="valActualStrat" style="font-weight: 700; color: #fff; font-size: 1.1rem;">-</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin: 0.6rem 0 0.25rem;">SIMULATOR RECOMMENDED STRATEGY</div>
+            <div id="valSimStrat" style="font-weight: 700; color: var(--accent-cyan); font-size: 1.1rem;">-</div>
+          </div>
+
+          <div id="valDiagnosticsContainer">
+            <h3 style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">Causal Diagnostic Triggers</h3>
+            <div id="diagnosticsList">
+              <p style="font-size: 0.8rem; color: var(--text-muted);">No discrepancies detected.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: WHAT-IF SCENARIOS -->
+    <section id="scenariosTab" class="tab-content">
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <h2 class="card-title"><span class="icon">🎯</span> Counterfactual What-If Sandbox (Addressing Core Research Questions)</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Select a pre-configured scenario or customize perturbations to test when strategies transition and measure strategic regret.
+        </p>
+
+        <!-- Scenario Catalog Cards -->
+        <div id="scenarioCardsGrid" class="scenario-card-grid">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Active Scenario Results & Regret Banner -->
+      <div id="scenarioOutcomeSection" style="display: none;">
+        <div id="regretBanner" class="regret-alert pivoted">
+          <div style="font-size: 2rem;">⚠️</div>
+          <div>
+            <div id="regretTitle" style="font-weight: 800; font-size: 1.05rem;">STRATEGY PIVOT REQUIRED</div>
+            <div id="regretDesc" style="font-size: 0.85rem; margin-top: 0.2rem;">Failing to adapt strategy incurs a strategic regret penalty.</div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <div class="card">
+            <h2 class="card-title"><span class="icon">📊</span> Strategic Pivot Breakdown</h2>
+            <div class="table-wrapper">
+              <table class="f1-table">
+                <tbody>
+                  <tr>
+                    <td style="color: var(--text-muted); font-weight: 700;">Nominal Baseline Winner</td>
+                    <td id="scenBaseStrat" style="font-weight: 700; color: #fff;">-</td>
+                    <td id="scenBaseTime" class="mono">-</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--accent-cyan); font-weight: 700;">Scenario Adapted Winner</td>
+                    <td id="scenWinnerStrat" style="font-weight: 700; color: var(--accent-cyan);">-</td>
+                    <td id="scenWinnerTime" class="mono">-</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--f1-red); font-weight: 700;">Strategic Regret (Penalty)</td>
+                    <td id="scenRegretVal" colspan="2" class="mono" style="font-weight: 800; color: var(--f1-red);">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="margin-top: 1rem; background: #14141c; border-radius: 8px; padding: 1rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Engineering Diagnostic</div>
+              <p id="scenDiagnosticText" style="font-size: 0.85rem; color: #e2e8f0; margin-top: 0.4rem; line-height: 1.4;">-</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title"><span class="icon">📋</span> Strategy Impact Under Perturbation</h2>
+            <div class="table-wrapper">
+              <table class="f1-table" id="scenarioOutcomesTable">
+                <thead>
+                  <tr>
+                    <th>Strategy</th>
+                    <th>Stops</th>
+                    <th>Scenario Time</th>
+                    <th>Net Time Impact</th>
+                    <th>Gap to Winner</th>
+                  </tr>
+                </thead>
+                <tbody id="scenarioOutcomesBody">
+                  <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Select a scenario to evaluate impact.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    F1 Race Strategy Simulator & Analysis — Phase 6 Interactive Platform & Research Engine
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

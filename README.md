@@ -1,152 +1,149 @@
-# F1 Race Strategy Simulator & Analysis 🏎️⏱️
+# Formula 1 Race Strategy Simulator 🏎️⏱️
 
-A data-driven simulation and optimization engine for Formula 1 race strategy. The platform evaluates competing tyre and pit-stop strategies under uncertainty, computes stint pace profiles, models non-linear tyre degradation and fuel burn dynamics, discovers mathematically optimal strategies, and calculates tactical pit windows.
+A data-driven simulation and optimization engine for Formula 1 race strategy. Evaluates tyre and pit-stop strategies under stochastic uncertainty, computes stint pace profiles, models non-linear tyre degradation and fuel burn dynamics, discovers mathematically optimal strategies, and calculates tactical undercut/overcut pit windows.
+
+<p align="center">
+  <img src="docs/assets/dashboard_preview.png" alt="F1 Race Strategy Simulator Interactive Dashboard" width="100%">
+</p>
 
 ---
 
 ## 📌 Features
 
-- **Lap-Time Decomposition Engine**: Synthesizes circuit baseline pace, compound pace offsets, dynamic fuel burn load, non-linear tyre degradation, track rubbering evolution, and traffic penalties into individual lap times.
-- **Dynamic Programming Optimizer**: Exact global strategy solver utilizing Bellman backward induction on a Directed Acyclic Graph (DAG) in `< 15ms`.
-- **Combinatorial Grid Search**: High-throughput strategy evaluation capable of screening 19,000+ candidate strategies in `~0.5 seconds`.
-- **Tactical Pit Window Discovery**: Calculates allowable undercut and overcut pit windows around optimal stop laps within an acceptable tactical delta ($\delta_{\text{tol}}$).
-- **Sensitivity Analysis & Tipping Point Engine**: Calculates exact critical crossover thresholds (e.g., degradation rate where 2-stop beats 1-stop) using Brent's method root-finding down to $10^{-4}$ precision.
-- **2D Decision Phase Maps**: Maps the entire parameter space (Pit Loss vs Tyre Degradation), generating decision boundary contours, iso-delta surfaces, and tactical safety margins.
-- **Dimensionless Elasticity & Minimax Regret**: Measures strategy vulnerability ($\% \Delta T_{\text{race}} / \% \Delta \theta$) and minimax regret under environmental misestimation.
-- **Multi-Objective & Pareto Frontier Analysis**: Discovers non-dominated strategies balancing raw pace ($\mathbb{E}[T_{\text{race}}]$) against downside risk ($P_{95}$ Value at Risk).
-- **Monte Carlo Engine**: Runs vectorized probability simulations modeling lap pace noise ($\mathcal{N}$), pit stop delay distributions (heavy-tailed LogNormal), and tyre wear multipliers.
-- **Statistical Analytics & Distribution Visualizer**: Computes Expected Time, Medians, standard deviations, P95 Value at Risk, and head-to-head win probability matrix, with automated plotting for KDE curves, Histograms, empirical CDFs, Boxplots, and Heatmaps.
-- **Traffic & Dirty Air Dynamics**: Models Virtual Field Spread and DRS train dirty air penalties after pit stops.
-- **Sporting Regulations**: Validates lap count conservation and the mandatory FIA two-compound dry race regulation.
-- **Interactive CLI Runner**: Evaluate preset/custom strategies, trigger automated optimization, or conduct parameter sensitivity sweeps with rich terminal telemetry tables.
-- **Automated Test Suite**: 64 comprehensive unit tests validating physical equations, conservation laws, dynamic programming optimality, Pareto frontiers, Brent crossover precision, and 2D phase maps.
+* **Interactive Web Dashboard**: Single-page dark-theme UI powered by FastAPI and Chart.js for real-time race simulation, DP optimization, Monte Carlo distributions, 2D phase maps, What-If scenarios, and historical telemetry validation.
+* **Dynamic Programming Strategy Optimizer**: Global strategy discovery using Bellman backward induction across the Directed Acyclic Graph (DAG) of valid stints in `< 15ms`.
+* **Combinatorial Grid Search**: Evaluates 19,000+ candidate stint configurations in `~0.5s` to rank top strategies.
+* **Tactical Pit Windows**: Computes flexible undercut and overcut pit windows around optimal stop laps within an acceptable time penalty ($\delta_{\text{tol}}$).
+* **Sensitivity Analysis & Tipping Points**: Computes exact crossover thresholds (e.g., degradation rate where 2-stop beats 1-stop) using Brent's method root-finding down to $10^{-4}$ precision.
+* **2D Decision Phase Maps**: Generates decision boundary contour maps across Pit Loss ($16-32\text{s}$) and Tyre Degradation Multiplier ($0.6-2.2\times$).
+* **What-If Scenario Sandbox**: Evaluates counterfactual track events (pit delays, degradation spikes, compound pace shifts, Safety Cars, 2026 technical regulations) and calculates **Strategic Regret** $\mathcal{R}$.
+* **Monte Carlo Uncertainty Engine**: Vectorized stochastic simulations modeling lap time noise, heavy-tailed pit stop variance, Value-at-Risk ($P_{95}\text{ VaR}$), Expected Shortfall ($CVaR_{95}$), and head-to-head win probability matrices.
+* **Real-World Telemetry Validation**: Ingests OpenF1 Grand Prix timing feeds, filters clean racing laps ($107\%$ median filter), fits constrained polynomial wear models ($\alpha_c, \beta_c$), and backtests against 2024 race winners with discrepancy diagnostics.
+* **Demonstration Notebook Suite**: 5 executable Jupyter curriculum notebooks covering physics exploration, optimization, sensitivity, validation, and scenario analysis.
 
 ---
 
-## 📐 Mathematical Formulation
+## 📐 Mathematical Model
 
-The deterministic lap time on lap $n \in \{1, \dots, N\}$ during stint $k$ on tyre compound $c$ is given by:
-
+### 1. Lap Time Synthesis
 $$T_{\text{lap}}(n) = T_{\text{base}} + \Delta_{\text{compound}}(c) + D_c\big(a(n)\big) + F\big(m_f(n)\big) - E_{\text{track}}(n) + T_{\text{traffic}}(n)$$
 
-### 1. Tyre Degradation Model
-$$D_c(a) = \alpha_c \cdot a + \beta_c \cdot a^2 + \kappa_c \cdot \big(\max(0, a - a_{\text{cliff}, c})\big)^2$$
-* $a$: Effective tyre age in laps (including dirty air degradation acceleration).
-* $\alpha_c$: Linear wear coefficient ($\text{s/lap}$).
-* $\beta_c$: Non-linear fatigue coefficient ($\text{s/lap}^2$).
-* $a_{\text{cliff}, c}$: Stint age threshold beyond which tyre performance sharply drops.
+* $T_{\text{base}}$: Theoretical clean-air track baseline pace (zero fuel, fresh tyres).
+* $\Delta_{\text{compound}}(c)$: Compound pace offset relative to Medium baseline.
+* $D_c(a)$: Non-linear tyre degradation penalty at tyre age $a$.
+* $F(m_f)$: Lap time penalty from current fuel mass $m_f$.
+* $E_{\text{track}}(n)$: Track evolution grip improvement from rubber deposition.
+* $T_{\text{traffic}}(n)$: Dirty air and traffic wake time loss.
 
-### 2. Fuel Load & Penalty Model
-$$m_f(n) = m_{f, 0} - (n - 1) \cdot \Delta m_f$$
-$$F\big(m_f(n)\big) = \gamma_{\text{fuel}} \cdot m_f(n)$$
+### 2. Tyre Wear & Thermal Cliff
+$$D_c(a) = \alpha_c \cdot a + \beta_c \cdot a^2 + \kappa_c \cdot \big(\max(0, a - a_{\text{cliff}, c})\big)^2$$
+
+* $\alpha_c$: Linear wear coefficient ($\text{s/lap}$).
+* $\beta_c$: Quadratic fatigue coefficient ($\text{s/lap}^2$).
+* $a_{\text{cliff}, c}$: Stint age threshold beyond which grip drops sharply.
+
+### 3. Fuel Mass Depletion & Penalty
+$$m_f(n) = m_{f, 0} - (n - 1) \cdot \Delta m_f, \quad F\big(m_f(n)\big) = \gamma_{\text{fuel}} \cdot m_f(n)$$
+
 * $m_{f, 0}$: Initial fuel load ($100 - 105\text{ kg}$).
-* $\Delta m_f$: Fuel burn rate ($\approx 1.7 - 1.9\text{ kg/lap}$).
+* $\Delta m_f$: Fuel consumption rate ($\approx 1.7 - 1.9\text{ kg/lap}$).
 * $\gamma_{\text{fuel}}$: Fuel weight sensitivity ($\approx 0.030 - 0.035\text{ s/kg}$).
 
-### 3. Total Race Time
+### 4. Total Race Duration
 $$T_{\text{race}}(S) = \sum_{n=1}^N T_{\text{lap}}(n) + (K - 1) \cdot \Delta T_{\text{pit}}$$
+
 where $K$ is the number of stints and $\Delta T_{\text{pit}}$ is the net pit lane time loss.
 
----
+### 5. Dynamic Programming & Bellman Optimality
+The global minimum-time race strategy is computed via backward induction across the Directed Acyclic Graph (DAG) of race laps:
+$$V(n, c, a) = \min \begin{cases}
+V(n+1, c, a+1) + T_{\text{lap}}(n, c, a), & \text{[STAY OUT]} \\
+\min\limits_{c' \neq c} \Big[ V(n+1, c', 1) + T_{\text{lap}}(n, c', 1) \Big] + \Delta T_{\text{pit}}, & \text{[PIT]}
+\end{cases}$$
+subject to the terminal boundary condition $V(N+1, c, a) = 0$ and the FIA requirement of using at least two distinct dry tyre compounds.
 
-## 📁 Project Architecture
+### 6. Strategic Regret
+$$\mathcal{R}\big(S; \theta'\big) = J\big(S; \theta'\big) - \min_{S' \in \mathcal{S}} J\big(S'; \theta'\big) \ge 0$$
 
-```text
-race_strategy_simulator/
-├── data/
-│   └── raw/             # Bundled offline datasets (bahrain_2024.json, barcelona_2024.json, monza_2024.json)
-├── docs/
-│   ├── phase_1_mathematical_model.md
-│   ├── phase_2_mathematical_model.md
-│   ├── phase_3_mathematical_model.md
-│   ├── phase_4_mathematical_model.md
-│   └── phase_5_mathematical_model.md
-├── src/
-│   ├── tyres.py         # TyreCompound dataclass, wear curves & Pirelli compound specs
-│   ├── fuel.py          # FuelModel consumption & weight penalty calculations
-│   ├── pitstop.py       # PitStopModel transit loss and stationary stop time
-│   ├── strategies.py    # Stint, Strategy classes & FIA rule validation
-│   ├── model.py         # CircuitConfig, LapRecord, and RaceModel synthesis
-│   ├── simulation.py    # Deterministic simulate_race() engine & RaceResult
-│   ├── config.py        # Circuit presets (Bahrain, Barcelona, Monza) & compounds
-│   ├── stochastic.py    # Stochastic noise parameters & probability distributions
-│   ├── montecarlo.py    # Vectorized Monte Carlo engine & win probability matrix
-│   ├── optimization.py  # DP Solver, Combinatorial Grid Search, Pit Windows & Pareto
-│   ├── data_pipeline.py # OpenF1 REST API client, local JSON caching & clean telemetry filter
-│   ├── estimation.py    # Fuel mass correction & multi-driver polynomial regression for wear
-│   ├── validation.py    # Historical strategy backtester, accuracy metrics & discrepancy diagnostics
-│   └── visualization.py # Empirical wear curves, residuals, Gantt backtest & executive dashboards
-├── tests/
-│   ├── test_data_pipeline.py
-│   ├── test_estimation.py
-│   ├── test_validation.py
-│   ├── test_circuit_evaluations.py
-│   ├── test_limitations_fixed.py
-│   ├── test_tyres.py
-│   ├── test_fuel.py
-│   ├── test_pitstop.py
-│   ├── test_strategies.py
-│   ├── test_model.py
-│   ├── test_simulation.py
-│   ├── test_montecarlo.py
-│   ├── test_visualization.py
-│   ├── test_optimization.py
-│   └── test_sensitivity.py
-├── run_simulation.py    # Interactive CLI runner with simulation, optimization, sensitivity & validation
-├── run_validation.py    # Dedicated Phase 5 validation CLI runner
-├── requirements.txt
-└── README.md
-```
+Quantifies the deterministic or expected time penalty incurred by committing to strategy $S$ when the true environment mutates to counterfactual state $\theta'$.
+
+### 📚 Detailed Mathematical Documentation
+For comprehensive physical derivations, mathematical proofs, stochastic algorithms, and validation procedures, explore the technical documentation:
+
+* **[Physics & Deterministic Synthesis](docs/phase_1_mathematical_model.md)**: Physical models for tyre degradation, compound grip deltas, non-linear thermal drop-off, fuel mass depletion penalty, and FIA multi-compound rules.
+* **[Stochastic Uncertainty & Monte Carlo Engine](docs/phase_2_mathematical_model.md)**: Gaussian lap noise modeling, log-normal pit transit latency, GEV extreme-value pit crew delays, Value-at-Risk ($P_{95}\text{ VaR}$), Expected Shortfall ($CVaR_{95}$), and win probability matrices.
+* **[Dynamic Programming & Bellman Optimization](docs/phase_3_mathematical_model.md)**: State space formulation, Bellman backward induction, Directed Acyclic Graph (DAG) complexity, combinatorial stint search, and tactical pit window tolerance derivation.
+* **[Sensitivity Sweeps & 2D Decision Phase Boundaries](docs/phase_4_mathematical_model.md)**: 1D parameter response curves, Brent's root-finding for exact crossover tipping points, and 2D $(t_{\text{pit}}, \mu_{\text{deg}})$ decision phase maps with tactical safety margins.
+* **[Empirical Telemetry Regression & Backtesting](docs/phase_5_mathematical_model.md)**: OpenF1 telemetry ingestion, $107\%$ median lap pace filtering, constrained OLS tyre wear parameter identification ($\alpha_c, \beta_c$), and historical Grand Prix backtesting with discrepancy diagnostics.
+* **[Counterfactual Scenarios & Safety Car Value Theory](docs/phase_6_mathematical_model.md)**: Formal perturbation algebra, Strategic Regret metric, and Dynamic Programming with opportunistic Safety Car pit stop dividend calculations.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 How to Use
 
 ### 1. Installation
-Clone the repository and install dependencies:
 ```bash
-git clone https://github.com/adem-temam/race_strategy_simulator.git
-cd race_strategy_simulator
+git clone https://github.com/adem-temam/f1_race_strategy_simulator.git
+cd f1_race_strategy_simulator
 pip install -r requirements.txt
 ```
 
-### 2. Strategy Optimization (Phase 3)
-Automatically discover the mathematically optimal strategy for a circuit:
+### 2. Interactive Web Dashboard
+Launch the web dashboard with automatic browser opening:
+```bash
+python3 run_dashboard.py
+```
+Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** to access all interactive tabs.
+
+Optional flags:
+```bash
+python3 run_dashboard.py --port 8080 --no-browser
+```
+
+### 3. Strategy Optimization
+Find the mathematically optimal strategy and tactical pit windows:
 ```bash
 # Optimize Bahrain GP (finds optimal 2-stop strategy and pit windows in ~0.5s)
 python3 run_simulation.py --circuit bahrain --optimize
 
-# Enforce maximum pit stops (e.g., find optimal 1-stop strategy at Monza)
+# Enforce maximum pit stops (e.g. 1-stop strategy at Monza)
 python3 run_simulation.py --circuit monza --optimize --max-stops 1
 
-# Optimize for lowest downside risk (P95 Value at Risk) using Monte Carlo
+# Optimize for lowest downside risk (P95 Value at Risk)
 python3 run_simulation.py --circuit bahrain --optimize --objective risk --mc 500
-
-# Suppress tactical pit windows table if only leaderboard is desired
-python3 run_simulation.py --circuit barcelona --optimize --no-pit-windows
 ```
 
-### 3. Sensitivity Analysis & Decision Phase Maps (Phase 4)
-Investigate why and when strategies transition between 1-stop and 2-stop regimes:
+### 4. Sensitivity Analysis & Decision Phase Maps
+Analyze when and why strategies transition between 1-stop and 2-stop regimes:
 ```bash
 # Compute exact critical tipping point (root finding) for tyre degradation
 python3 run_simulation.py --circuit bahrain --crossover
 
-# Compute tipping point for pit stop time loss (e.g. at Monza)
+# Compute tipping point for pit stop time loss
 python3 run_simulation.py --circuit monza --crossover --param pit-loss
 
-# Run 1D parameter sweep comparing optimal 1-stop vs 2-stop with elasticity
+# Run 1D parameter sweep comparing 1-stop vs 2-stop
 python3 run_simulation.py --circuit bahrain --sensitivity --param deg
 
 # Generate 2D decision boundary phase diagram across Pit Loss and Degradation
 python3 run_simulation.py --circuit bahrain --phase-map --plot
-
-# Generate full 4-panel executive sensitivity dashboard
-python3 run_simulation.py --circuit bahrain --sensitivity --plot
 ```
 
-### 4. Historical Data Validation & Empirical Telemetry Calibration (Phase 5)
-Ingest real Formula 1 race telemetry, fit empirical wear coefficients ($\alpha_c, \beta_c$), and backtest model recommendations against real 2024 Grand Prix winners:
+### 5. What-If Scenario Analysis
+Evaluate counterfactual track interventions and calculate Strategic Regret:
+```bash
+# Run a specific scenario (severe degradation spike)
+python3 run_simulation.py --circuit bahrain --scenario high_deg
+
+# Evaluate an unexpected Safety Car neutralization at Lap 18
+python3 run_simulation.py --circuit bahrain --scenario safety_car_lap18
+
+# Run the complete 11-scenario counterfactual matrix
+python3 run_simulation.py --circuit bahrain --run-all-scenarios
+```
+
+### 6. Real-World Telemetry Validation
+Fit empirical wear parameters from real race data and backtest against 2024 winners:
 ```bash
 # Run strategy backtest and causal discrepancy diagnostics on Bahrain GP
 python3 run_simulation.py --circuit bahrain --validate
@@ -154,94 +151,71 @@ python3 run_simulation.py --circuit bahrain --validate
 # Inspect empirical parameter regression table (wear alpha/beta, pit loss, lap noise)
 python3 run_simulation.py --circuit barcelona --fit-params
 
-# Run full dedicated validation suite with visual plots (wear curves, residuals, Gantt charts)
+# Run full validation suite with visual plots (wear curves, residuals, Gantt charts)
 python3 run_validation.py --circuit monza --plot
-
-# Execute backtest across all 3 benchmark circuits simultaneously
-python3 run_validation.py --circuit all
 ```
 
-### 5. Evaluate Preset Strategies via CLI
-Run the default strategy comparison on Bahrain GP (57 laps):
+### 7. Custom Stint Evaluation & Simulation
 ```bash
+# Evaluate preset strategies on Bahrain GP
 python3 run_simulation.py --circuit bahrain
-```
 
-### 5. Test Custom Stints
-Specify custom compound sequences using shorthand (`S15-M21-S21`, `M26-H31`):
-```bash
-python3 run_simulation.py --circuit bahrain -s "S15-M21-S21" -s "M26-H31" -s "S12-H45"
-```
+# Evaluate custom stint sequences
+python3 run_simulation.py --circuit bahrain -s "S15-M21-S21" -s "M26-H31"
 
-### 6. Inspect Lap Telemetry
-View per-lap physical breakdown (degradation, remaining fuel, effective lap time):
-```bash
+# View per-lap physical breakdown (degradation, remaining fuel, lap pace)
 python3 run_simulation.py --strategy "M26-H31" --laps
 ```
 
-### 7. Monte Carlo Probabilistic Simulation
-Run thousands of iterations introducing real-world stochastic variance:
+### 8. Monte Carlo Uncertainty Analysis
 ```bash
-# Run 10,000 iterations to calculate Expected Time, Risk (P95), and Head-to-Head Win Probability
+# Run 10,000 stochastic iterations (Expected Time, P95 Risk, Win Matrix)
 python3 run_simulation.py --mc 10000
 
-# Run iterations and generate complete Seaborn visual suite
+# Generate visual distribution plots (KDE, CDF, boxplots)
 python3 run_simulation.py --mc 5000 --plot
 ```
+
+### 9. Demonstration Jupyter Notebooks
+```bash
+jupyter notebook notebooks/
+```
+* `01_synthetic_model_exploration.ipynb`: Physics engine, tyre wear curves, and fuel mass burn.
+* `02_monte_carlo_and_optimization.ipynb`: Stochastic risk modeling, win probability matrix, and Bellman DP.
+* `03_sensitivity_and_decision_maps.ipynb`: Brent root-finding crossover tipping points and 2D phase diagrams.
+* `04_historical_data_validation.ipynb`: OpenF1 telemetry ingestion, OLS regression, and Verstappen/Leclerc backtesting.
+* `05_scenario_analysis_and_what_if.ipynb`: Counterfactual perturbations, strategic regret, and 2026 regulations.
 
 ---
 
 ## 🐍 Python API Example
 
-### Strategy Optimization (Phase 3)
 ```python
-from src.config import create_race_model, get_circuit_compounds
+from src.model import RaceModel
+from src.config import BAHRAIN_CONFIG, get_circuit_compounds
 from src.optimization import StrategyOptimizer, OptimizationObjective
+from src.scenarios import ScenarioEngine
 
-# 1. Initialize circuit and compounds
-model = create_race_model("bahrain")
+# 1. Initialize circuit model
+model = RaceModel(BAHRAIN_CONFIG)
 compounds = get_circuit_compounds("bahrain")
 
-# 2. Initialize optimizer
+# 2. Discover optimal strategy via Bellman Dynamic Programming
 optimizer = StrategyOptimizer(model, compounds)
+opt_result = optimizer.optimize(max_stops=2, objective=OptimizationObjective.DETERMINISTIC_TIME)
+print(f"Optimal Strategy: {opt_result.optimal_strategy.description}")
+print(f"Total Race Time: {opt_result.formatted_optimal_time}")
 
-# 3. Discover optimal strategy
-result = optimizer.optimize(max_stops=2, objective=OptimizationObjective.DETERMINISTIC_TIME)
-print(f"Optimal Strategy: {result.optimal_strategy.description}")
-print(f"Total Race Time: {result.formatted_optimal_time}")
-
-# 4. Inspect tactical pit windows
-for window in result.pit_windows:
+# 3. Inspect tactical pit windows
+for window in opt_result.pit_windows:
     print(f"Stop {window.pit_index}: Window Laps {window.window_open_lap}–{window.window_close_lap} (Size: {window.window_size}L)")
-```
 
-### Sensitivity Analysis & Decision Boundaries (Phase 4)
-```python
-from src.config import create_race_model, get_circuit_compounds
-from src.sensitivity import CrossoverFinder, PhaseDiagram2D, SensitivityParameter
-
-model = create_race_model("bahrain")
-compounds = get_circuit_compounds("bahrain")
-
-# 1. Find exact critical tipping point where 2-stop beats 1-stop
-finder = CrossoverFinder(model, compounds)
-c_pt = finder.find_1_vs_2_stop_crossover(
-    param=SensitivityParameter.TYRE_DEG_MULTIPLIER,
-    search_range=(0.8, 1.6),
-)
-print(f"Crossover Degradation Multiplier: {c_pt.crossover_value:.4f}")
-print(f"Circuit Nominal Baseline: {c_pt.nominal_value:.4f}")
-print(f"Distance to Boundary: {c_pt.distance_from_nominal:+.4f}")
-
-# 2. Compute 2D Decision Phase Diagram
-phase_mapper = PhaseDiagram2D(model, compounds)
-phase_result = phase_mapper.compute_phase_map(
-    param_x=SensitivityParameter.PIT_LOSS,
-    x_range=(16.0, 32.0),
-    param_y=SensitivityParameter.TYRE_DEG_MULTIPLIER,
-    y_range=(0.6, 2.2),
-)
-print(f"Nominal Operating Regime: {phase_result.nominal_stops}-Stop Strategy")
+# 4. Evaluate What-If scenario (e.g. +25% thermal degradation spike)
+engine = ScenarioEngine(model)
+scen_res = engine.evaluate_scenario("high_deg")
+print(f"Scenario: {scen_res.scenario_name}")
+print(f"Strategic Regret: {scen_res.strategic_regret:.2f}s")
+print(f"Strategy Pivot Triggered: {scen_res.strategy_pivoted}")
 ```
 
 ---
@@ -253,15 +227,4 @@ Run the automated test suite with `pytest`:
 pytest -v
 ```
 
-All 76 unit tests verify model mechanics, fuel consumption conservation, pit stop accounting, FIA rule compliance, Bellman DAG optimality, Pareto frontiers, Brent crossover precision, 2D phase maps, OpenF1 offline cache ingestion, empirical polynomial wear regression, strategy backtests, and causal discrepancy diagnostics.
-
----
-
-## 🗺️ Roadmap
-
-- [x] **Phase 1: Mathematical Modeling Core & Deterministic Simulation**
-- [x] **Phase 2: Monte Carlo Simulation & Stochastic Uncertainty** (lap variance, pit stop delays, wear deviations, distribution visualizer)
-- [x] **Phase 3: Strategy Optimization Engine** (Dynamic Programming DAG, Combinatorial Search, tactical pit windows, Pareto risk modeling)
-- [x] **Phase 4: Sensitivity Analysis & Decision Phase Maps** (crossover tipping points, Brent's method root-finding, 2D decision phase boundaries, elasticity, and minimax regret)
-- [x] **Phase 5: Real-World Historical Data Integration & Validation** (OpenF1 ingestion, local offline JSON cache, fuel correction, empirical polynomial regression for tyre wear, strategy backtesting against 2024 winners, and discrepancy diagnostics)
-- [ ] **Phase 6: Interactive Dashboard & Scientific Visualization**
+All 102 unit tests verify physical equations, fuel mass conservation, pit stop transit accounting, FIA rule compliance, Bellman DAG optimality, Pareto risk frontiers, Brent crossover root-finding, 2D phase boundaries, OpenF1 offline cache ingestion, empirical wear regression, strategy backtests, counterfactual scenarios, FastAPI REST endpoints, and Jupyter notebook integrity.

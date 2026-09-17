@@ -52,11 +52,15 @@ Thumbs.db
 
 # Plots & Generated Output Data
 *.png
+!docs/assets/*.png
 *.jpg
 *.jpeg
 *.svg
 *.pdf
 *.log
+scripts/capture_*
+capture_*.py
+capture_*.js
 benchmark_output.json
 benchmark_results*.json
 benchmark_results_*.json

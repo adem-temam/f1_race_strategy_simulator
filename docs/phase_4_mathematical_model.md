@@ -16,7 +16,7 @@ In **Phase 3**, we implemented global combinatorial and dynamic programming stra
 $$S^*(\mathbf{\theta}) = \arg\min_{S \in \mathcal{S}_{\text{valid}}} \mathcal{J}(S; \mathbf{\theta})$$
 
 In **Phase 4**, the system transitions from finding the optimal strategy for a single static parameter set to **investigating the structure of the decision space across parameter variations**:
-> **Given a race environment parameterized by $\mathbf{\theta} = (\mu_{\text{deg}}, T_{\text{pit\_loss}}, \mathbf{\Delta}_{\text{compound}}, E_{\text{track}}, \gamma_{\text{fuel}})$, why does a strategy become optimal, when does the optimal strategy transition (tipping points), where are the decision boundaries in multi-dimensional parameter space, and how robust is a chosen strategy to environmental misestimation?**
+> **Given a race environment parameterized by $\mathbf{\theta} = (\mu_{\text{deg}}, t_{\text{pit}}, \mathbf{\Delta}_{\text{compound}}, E_{\text{track}}, \gamma_{\text{fuel}})$, why does a strategy become optimal, when does the optimal strategy transition (tipping points), where are the decision boundaries in multi-dimensional parameter space, and how robust is a chosen strategy to environmental misestimation?**
 
 ---
 
@@ -29,13 +29,13 @@ The total race time difference is:
 $$\Delta T(\mathbf{\theta}) = T_{\text{race}}(S_2; \mathbf{\theta}) - T_{\text{race}}(S_1; \mathbf{\theta}) = \Big[ T_{\text{track}}(S_2; \mathbf{\theta}) - T_{\text{track}}(S_1; \mathbf{\theta}) \Big] + \Delta T_{\text{pit}}$$
 
 where:
-* $\Delta T_{\text{pit}} = T_{\text{pit\_loss}}$ is the net pit loss penalty incurred by taking an additional stop.
+* $\Delta T_{\text{pit}} = t_{\text{pit}}$ is the net pit loss penalty incurred by taking an additional stop.
 * $T_{\text{track}}(S)$ is the net elapsed time on track (excluding stationary and transit pit loss).
 
 The 2-stop strategy is strictly faster if and only if:
-$$\Delta T_{\text{pace\_savings}} = T_{\text{track}}(S_1; \mathbf{\theta}) - T_{\text{track}}(S_2; \mathbf{\theta}) > T_{\text{pit\_loss}}$$
+$$\Delta T_{\text{pace}} = T_{\text{track}}(S_1; \mathbf{\theta}) - T_{\text{track}}(S_2; \mathbf{\theta}) > t_{\text{pit}}$$
 
-The strategy problem fundamentally reduces to whether running shorter stints on fresher rubber and softer compounds recovers more on-track time than the pit lane transit loss $T_{\text{pit\_loss}}$.
+The strategy problem fundamentally reduces to whether running shorter stints on fresher rubber and softer compounds recovers more on-track time than the pit lane transit loss $t_{\text{pit}}$.
 
 ---
 
@@ -66,7 +66,7 @@ $$\Delta \text{Deg}(K=2 \to K=3) = \mu_{\text{deg}} \left[ \frac{\alpha N^2}{12}
 ## 3. Mathematical Formulations of Sensitivity Analysis
 
 ### 3.1 1D Parameter Response Curves & Lower Envelope
-Let $\theta \in [\theta_{\min}, \theta_{\max}]$ denote a single scalar parameter (e.g. $\mu_{\text{deg}}$ or $T_{\text{pit\_loss}}$), holding all other parameters $\mathbf{\theta}_{-\theta}$ fixed.
+Let $\theta \in [\theta_{\min}, \theta_{\max}]$ denote a single scalar parameter (e.g. $\mu_{\text{deg}}$ or $t_{\text{pit}}$), holding all other parameters $\mathbf{\theta}_{-\theta}$ fixed.
 
 For a finite set of competing candidate strategies $\mathcal{S} = \{S_1, S_2, \dots, S_M\}$:
 $$T_m(\theta) = T_{\text{race}}(S_m; \theta)$$
@@ -112,7 +112,7 @@ A steep derivative implies a brittle boundary where slight parameter misestimati
 ---
 
 ### 3.4 2D Decision Phase Maps
-Let $\boldsymbol{\Theta} = [\theta_{1, \min}, \theta_{1, \max}] \times [\theta_{2, \min}, \theta_{2, \max}] \subset \mathbb{R}^2$ be a two-dimensional parameter slice (e.g., Pit Loss $T_{\text{pit\_loss}}$ on the X-axis and Degradation Multiplier $\mu_{\text{deg}}$ on the Y-axis).
+Let $\boldsymbol{\Theta} = [\theta_{1, \min}, \theta_{1, \max}] \times [\theta_{2, \min}, \theta_{2, \max}] \subset \mathbb{R}^2$ be a two-dimensional parameter slice (e.g., Pit Loss $t_{\text{pit}}$ on the X-axis and Degradation Multiplier $\mu_{\text{deg}}$ on the Y-axis).
 
 We partition $\boldsymbol{\Theta}$ into discrete **strategy decision regimes**:
 $$\mathcal{R}_k = \big\{ (\theta_1, \theta_2) \in \boldsymbol{\Theta} \;\big|\; \text{OptimalStops}(\theta_1, \theta_2) = k \big\} \quad \text{for } k \in \{1, 2, 3\}$$
@@ -123,8 +123,8 @@ where $\Delta T(\theta_1, \theta_2) = T_{\text{1-stop}}^*(\theta_1, \theta_2) - 
 
 #### Analytical Crossover Curve Approximation:
 Equating tyre degradation savings to pit loss:
-$$\mu_{\text{deg}}^*(T_{\text{pit\_loss}}) \approx \frac{T_{\text{pit\_loss}}}{\frac{\alpha N^2}{12} + \frac{5\beta N^3}{108} + N_{\text{soft}} \cdot \Delta_{\text{soft}}}$$
-This reveals that the decision boundary $\mathcal{B}_{1,2}$ in the $(T_{\text{pit\_loss}}, \mu_{\text{deg}})$ plane is approximately an affine ray through the origin.
+$$\mu_{\text{deg}}^*(t_{\text{pit}}) \approx \frac{t_{\text{pit}}}{\frac{\alpha N^2}{12} + \frac{5\beta N^3}{108} + N_{\text{soft}} \cdot \Delta_{\text{soft}}}$$
+This reveals that the decision boundary $\mathcal{B}_{1,2}$ in the $(t_{\text{pit}}, \mu_{\text{deg}})$ plane is approximately an affine ray through the origin.
 
 #### Distance to Boundary (Tactical Safety Margin):
 For a circuit with nominal parameters $\mathbf{\theta}_0 = (T_{\text{pit}, 0}, \mu_{\text{deg}, 0})$:

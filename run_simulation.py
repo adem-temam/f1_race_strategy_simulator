@@ -272,6 +272,44 @@ def print_phase_map_summary(phase_res) -> None:
     print(f"  Boundary Status:         {status}")
     print("=" * 95 + "\n")
 
+
+def print_scenario_table(result) -> None:
+    """Print detailed impact table for a single counterfactual scenario."""
+    print("\n" + "=" * 98)
+    print(f"  WHAT-IF SCENARIO EVALUATION: {result.scenario.name.upper()} ({result.circuit_name})")
+    print("=" * 98)
+    print(f"  Description:       {result.scenario.description}")
+    print(f"  Research Question: \"{result.scenario.research_question}\"")
+    print("-" * 98)
+    print(f"  Baseline Optimal:  {result.baseline_optimal_strategy.description:<35} Total Time: {result.formatted_baseline_time}")
+    print(f"  Scenario Optimal:  {result.scenario_optimal_strategy.description:<35} Total Time: {result.formatted_scenario_time}")
+    pivot_str = "YES (PIVOT RECOMMENDED)" if result.strategy_pivoted else "NO (STRATEGY FULLY ROBUST)"
+    print(f"  Strategy Pivoted:  {pivot_str}")
+    print(f"  Strategic Regret:  {result.formatted_regret} (penalty if baseline strategy is kept)")
+    print("-" * 98)
+    print(f"  Engineering Insight: {result.summary_insight}")
+    print("=" * 98)
+    print(f"{'Strategy Name':<32} {'Stops':<6} {'Base Time':<12} {'Scenario Time':<16} {'Impact':<10} {'Gap':<10}")
+    print("-" * 98)
+    for oc in result.strategy_outcomes:
+        gap_str = "WINNER" if oc.gap_to_winner == 0 else f"+{oc.gap_to_winner:.2f}s"
+        print(f"{oc.strategy_name:<32} {oc.stops:<6} {oc.baseline_time:<12.2f} {oc.formatted_scenario_time:<16} {oc.formatted_impact:<10} {gap_str:<10}")
+    print("=" * 98 + "\n")
+
+
+def print_all_scenarios_matrix(results: dict, circuit_name: str) -> None:
+    """Print comparative matrix of all preset scenarios."""
+    print("\n" + "=" * 105)
+    print(f"  PHASE 6 SCENARIO ANALYSIS MATRIX: {circuit_name.upper()}")
+    print("=" * 105)
+    print(f"{'Scenario ID':<20} {'Scenario Name':<32} {'Pivot?':<8} {'Regret':<10} {'Scenario Winner':<32}")
+    print("-" * 105)
+    for scen_id, r in results.items():
+        pivot_tag = "YES" if r.strategy_pivoted else "NO"
+        print(f"{scen_id:<20} {r.scenario.name[:30]:<32} {pivot_tag:<8} {r.formatted_regret:<10} {r.scenario_optimal_strategy.description:<32}")
+    print("=" * 105 + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="F1 Race Strategy Simulator - Evaluate and compare pit stop strategies."
@@ -396,8 +434,30 @@ def main() -> None:
         action="store_true",
         help="Estimate empirical tyre degradation and fuel parameters from real telemetry.",
     )
+    parser.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="Launch the Phase 6 interactive web dashboard in your browser.",
+    )
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="Run counterfactual what-if scenario (e.g. slow_stop, botched_stop, high_deg, low_deg, etc.).",
+    )
+    parser.add_argument(
+        "--run-all-scenarios",
+        action="store_true",
+        help="Execute full catalog of counterfactual scenarios and output comparative impact matrix.",
+    )
 
     args = parser.parse_args()
+
+    # Launch Phase 6 Interactive Web Dashboard
+    if args.dashboard:
+        import run_dashboard
+        run_dashboard.main()
+        return
 
     # Check for Phase 5 Validation / Empirical Estimation request
     if args.validate or args.fit_params:
@@ -431,6 +491,28 @@ def main() -> None:
     model = create_race_model(args.circuit, era=args.era)
     circuit_name = model.circuit.name
     total_laps = model.circuit.total_laps
+
+    # Check for Phase 6 Scenario Analysis request
+    if args.scenario or args.run_all_scenarios:
+        from src.scenarios import ScenarioEngine, PRESET_SCENARIOS
+
+        engine = ScenarioEngine(args.circuit)
+        if args.run_all_scenarios:
+            print(f"\nEvaluating complete Phase 6 scenario matrix for {circuit_name}...")
+            all_res = engine.run_all_presets()
+            print_all_scenarios_matrix(all_res, circuit_name)
+            return
+
+        scen_key = args.scenario.lower()
+        if scen_key not in PRESET_SCENARIOS:
+            print(f"Error: Scenario '{args.scenario}' not found in presets.", file=sys.stderr)
+            print(f"Available presets: {', '.join(PRESET_SCENARIOS.keys())}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"\nEvaluating scenario '{scen_key}' for {circuit_name}...")
+        scen_res = engine.evaluate_scenario(PRESET_SCENARIOS[scen_key])
+        print_scenario_table(scen_res)
+        return
 
     # Build safety car lap map if provided
     safety_car_laps = {}
