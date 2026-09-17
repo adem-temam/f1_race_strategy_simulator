@@ -854,5 +854,3 @@ def plot_strategy_backtest_gantt(
         print(f"Backtest Gantt plot saved to {save_path}")
     else:
         plt.show()
-
-

@@ -72,7 +72,6 @@ race_strategy_simulator/
 │   ├── stochastic.py    # Stochastic noise parameters & probability distributions
 │   ├── montecarlo.py    # Vectorized Monte Carlo engine & win probability matrix
 │   ├── optimization.py  # DP Solver, Combinatorial Grid Search, Pit Windows & Pareto
-│   ├── sensitivity.py   # Parameter sweeps, Brent's root-finding, 2D phase maps & regret
 │   ├── data_pipeline.py # OpenF1 REST API client, local JSON caching & clean telemetry filter
 │   ├── estimation.py    # Fuel mass correction & multi-driver polynomial regression for wear
 │   ├── validation.py    # Historical strategy backtester, accuracy metrics & discrepancy diagnostics
