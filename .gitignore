@@ -52,6 +52,7 @@ Thumbs.db
 
 # Plots & Generated Output Data
 *.png
+!docs/assets/*.png
 *.jpg
 *.jpeg
 *.svg

@@ -8,15 +8,15 @@ let mcChart = null;
 let sensChart = null;
 
 // Initialize when DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
   setupCircuitSelector();
   setupSimulatorControls();
   setupOptimizerControls();
   setupMonteCarloControls();
   setupSensitivityControls();
-  setupScenarios();
-  loadCircuits();
+  await loadCircuits();
+  runSimulation();
 });
 
 // -------------------------------------------------------------------------

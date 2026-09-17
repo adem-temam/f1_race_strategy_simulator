@@ -2,10 +2,16 @@
 
 A data-driven simulation and optimization engine for Formula 1 race strategy. The platform evaluates competing tyre and pit-stop strategies under uncertainty, computes stint pace profiles, models non-linear tyre degradation and fuel burn dynamics, discovers mathematically optimal strategies, and calculates tactical pit windows.
 
+<p align="center">
+  <img src="docs/assets/dashboard_preview.png" alt="F1 Race Strategy Simulator Interactive Dashboard" width="100%">
+</p>
+
 ---
 
 ## 📌 Features
 
+- **Interactive Web Dashboard**: Modern, responsive dark-theme single-page UI powered by FastAPI and Chart.js featuring 6 operational consoles: Live Telemetry Simulator, Bellman DP Optimizer, Monte Carlo Risk Explorer, 2D Strategic Phase Diagrams, What-If Scenario Sandbox, and Real-World Telemetry Validation.
+- **What-If Scenario Analysis Engine**: Counterfactual parameter perturbation manifold $\theta' = \mathcal{P}(\theta_0, \mathbf{p})$ with 11 pre-configured scenarios addressing the 6 core research questions from `project.md`, evaluating **Strategic Regret** $\mathcal{R}(S^*(\theta_0); \theta')$ and detecting winning strategy pivots.
 - **Lap-Time Decomposition Engine**: Synthesizes circuit baseline pace, compound pace offsets, dynamic fuel burn load, non-linear tyre degradation, track rubbering evolution, and traffic penalties into individual lap times.
 - **Dynamic Programming Optimizer**: Exact global strategy solver utilizing Bellman backward induction on a Directed Acyclic Graph (DAG) in `< 15ms`.
 - **Combinatorial Grid Search**: High-throughput strategy evaluation capable of screening 19,000+ candidate strategies in `~0.5 seconds`.
@@ -16,10 +22,12 @@ A data-driven simulation and optimization engine for Formula 1 race strategy. Th
 - **Multi-Objective & Pareto Frontier Analysis**: Discovers non-dominated strategies balancing raw pace ($\mathbb{E}[T_{\text{race}}]$) against downside risk ($P_{95}$ Value at Risk).
 - **Monte Carlo Engine**: Runs vectorized probability simulations modeling lap pace noise ($\mathcal{N}$), pit stop delay distributions (heavy-tailed LogNormal), and tyre wear multipliers.
 - **Statistical Analytics & Distribution Visualizer**: Computes Expected Time, Medians, standard deviations, P95 Value at Risk, and head-to-head win probability matrix, with automated plotting for KDE curves, Histograms, empirical CDFs, Boxplots, and Heatmaps.
+- **Historical Data Calibration & Backtesting**: Real-world OpenF1 telemetry ingestion, fuel mass correction, constrained polynomial wear regression ($\alpha_c, \beta_c$), and backtesting against 2024 Grand Prix winners with discrepancy diagnostics.
+- **Interactive Demonstration Notebook Suite**: Five curriculum Jupyter notebooks covering the full progression from physics modeling to real-world validation.
 - **Traffic & Dirty Air Dynamics**: Models Virtual Field Spread and DRS train dirty air penalties after pit stops.
 - **Sporting Regulations**: Validates lap count conservation and the mandatory FIA two-compound dry race regulation.
 - **Interactive CLI Runner**: Evaluate preset/custom strategies, trigger automated optimization, or conduct parameter sensitivity sweeps with rich terminal telemetry tables.
-- **Automated Test Suite**: 64 comprehensive unit tests validating physical equations, conservation laws, dynamic programming optimality, Pareto frontiers, Brent crossover precision, and 2D phase maps.
+- **Automated Test Suite**: 102 comprehensive unit tests validating physical equations, conservation laws, dynamic programming optimality, Pareto frontiers, Brent crossover precision, 2D phase maps, OpenF1 offline cache ingestion, empirical wear regression, strategy backtests, counterfactual scenarios, FastAPI REST endpoints, and notebook structures.
 
 ---
 
