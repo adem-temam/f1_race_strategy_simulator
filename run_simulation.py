@@ -386,8 +386,45 @@ def main() -> None:
         action="store_true",
         help="Generate a 2D decision boundary phase diagram across Pit Loss and Tyre Degradation.",
     )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Run Phase 5 historical validation and backtesting against real Grand Prix outcomes.",
+    )
+    parser.add_argument(
+        "--fit-params",
+        action="store_true",
+        help="Estimate empirical tyre degradation and fuel parameters from real telemetry.",
+    )
 
     args = parser.parse_args()
+
+    # Check for Phase 5 Validation / Empirical Estimation request
+    if args.validate or args.fit_params:
+        from src.data_pipeline import load_historical_data
+        from src.estimation import estimate_empirical_parameters
+        from src.validation import RaceBacktester, DiscrepancyAnalyzer
+        from run_validation import (
+            print_empirical_params_table,
+            print_backtest_table,
+            print_discrepancy_diagnostic,
+            DEFAULT_WINNERS,
+        )
+
+        data = load_historical_data(args.circuit)
+        params = estimate_empirical_parameters(data)
+
+        if args.fit_params or not args.validate:
+            print_empirical_params_table(params, data.circuit_name)
+
+        if args.validate:
+            tester = RaceBacktester(data, empirical_params=params)
+            default_d_num, default_d_name = DEFAULT_WINNERS[args.circuit]
+            metrics = tester.backtest_driver(default_d_num, driver_name=default_d_name)
+            print_backtest_table(metrics)
+            diag = DiscrepancyAnalyzer.analyze_circuit(args.circuit)
+            print_discrepancy_diagnostic(diag)
+        return
 
     from src.config import get_circuit_compounds
     compounds = get_circuit_compounds(args.circuit)
