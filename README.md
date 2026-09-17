@@ -54,10 +54,28 @@ $$T_{\text{race}}(S) = \sum_{n=1}^N T_{\text{lap}}(n) + (K - 1) \cdot \Delta T_{
 
 where $K$ is the number of stints and $\Delta T_{\text{pit}}$ is the net pit lane time loss.
 
-### 5. Strategic Regret
+### 5. Dynamic Programming & Bellman Optimality
+The global minimum-time race strategy is computed via backward induction across the Directed Acyclic Graph (DAG) of race laps:
+$$V(n, c, a) = \min \begin{cases}
+V(n+1, c, a+1) + T_{\text{lap}}(n, c, a), & \text{[STAY OUT]} \\
+\min\limits_{c' \neq c} \Big[ V(n+1, c', 1) + T_{\text{lap}}(n, c', 1) \Big] + \Delta T_{\text{pit}}, & \text{[PIT]}
+\end{cases}$$
+subject to the terminal boundary condition $V(N+1, c, a) = 0$ and the FIA requirement of using at least two distinct dry tyre compounds.
+
+### 6. Strategic Regret
 $$\mathcal{R}\big(S; \theta'\big) = J\big(S; \theta'\big) - \min_{S' \in \mathcal{S}} J\big(S'; \theta'\big) \ge 0$$
 
-Measures the race time forfeited by adhering to a baseline strategy under a mutated track environment $\theta'$.
+Quantifies the deterministic or expected time penalty incurred by committing to strategy $S$ when the true environment mutates to counterfactual state $\theta'$.
+
+### 📚 Detailed Mathematical Documentation
+For comprehensive physical derivations, mathematical proofs, stochastic algorithms, and validation procedures, explore the technical documentation:
+
+* **[Physics & Deterministic Synthesis](docs/phase_1_mathematical_model.md)**: Physical models for tyre degradation, compound grip deltas, non-linear thermal drop-off, fuel mass depletion penalty, and FIA multi-compound rules.
+* **[Stochastic Uncertainty & Monte Carlo Engine](docs/phase_2_mathematical_model.md)**: Gaussian lap noise modeling, log-normal pit transit latency, GEV extreme-value pit crew delays, Value-at-Risk ($P_{95}\text{ VaR}$), Expected Shortfall ($CVaR_{95}$), and win probability matrices.
+* **[Dynamic Programming & Bellman Optimization](docs/phase_3_mathematical_model.md)**: State space formulation, Bellman backward induction, Directed Acyclic Graph (DAG) complexity, combinatorial stint search, and tactical pit window tolerance derivation.
+* **[Sensitivity Sweeps & 2D Decision Phase Boundaries](docs/phase_4_mathematical_model.md)**: 1D parameter response curves, Brent's root-finding for exact crossover tipping points, and 2D $(t_{\text{pit}}, \mu_{\text{deg}})$ decision phase maps with tactical safety margins.
+* **[Empirical Telemetry Regression & Backtesting](docs/phase_5_mathematical_model.md)**: OpenF1 telemetry ingestion, $107\%$ median lap pace filtering, constrained OLS tyre wear parameter identification ($\alpha_c, \beta_c$), and historical Grand Prix backtesting with discrepancy diagnostics.
+* **[Counterfactual Scenarios & Safety Car Value Theory](docs/phase_6_mathematical_model.md)**: Formal perturbation algebra, Strategic Regret metric, and Dynamic Programming with opportunistic Safety Car pit stop dividend calculations.
 
 ---
 

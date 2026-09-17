@@ -31,7 +31,7 @@ where:
 ### 2.2 Pit Stop Execution Variance ($\epsilon_{\text{pit}}$)
 A pit stop can never be faster than the physical limit of the crew, but it can be significantly slower (e.g., a sticky wheel nut). This creates a heavily right-skewed distribution. We model the delay using a **Log-Normal distribution** (or Gamma distribution) added to the theoretical perfect pit loss:
 
-$$T_{\text{pit}} = T_{\text{pit\_ideal}} + \epsilon_{\text{pit}}$$
+$$T_{\text{pit}} = T_{\text{pit, ideal}} + \epsilon_{\text{pit}}$$
 $$\epsilon_{\text{pit}} \sim \text{LogNormal}(\mu_{\text{pit}}, \sigma_{\text{pit}}^2)$$
 
 where:

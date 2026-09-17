@@ -110,8 +110,8 @@ $$\Delta T_{\text{SC}} = t_{\text{pit}}^{\text{nominal}} - t_{\text{pit}}^{\text
 
 Let $l_{\text{SC}}$ be the lap at which the Safety Car is deployed. For a car running on stint $k$ with tyre age $a$, the decision to pit or stay out is governed by the Bellman comparison:
 $$V_{\text{SC}}(l_{\text{SC}}, c, a) = \min \begin{cases}
-V\big(l_{\text{SC}} + 1, c, a + 1\big) + T_{\text{sc\_lap}}, & \text{[STAY OUT]} \\
-t_{\text{pit}}^{\text{SC}} + \min\limits_{c' \neq c} \Big[ V\big(l_{\text{SC}} + 1, c', 1\big) + T_{\text{sc\_lap}} \Big], & \text{[PIT FOR NEW TYRES]}
+V\big(l_{\text{SC}} + 1, c, a + 1\big) + T_{\text{SC}}, & \text{[STAY OUT]} \\
+t_{\text{pit}}^{\text{SC}} + \min\limits_{c' \neq c} \Big[ V\big(l_{\text{SC}} + 1, c', 1\big) + T_{\text{SC}} \Big], & \text{[PIT FOR NEW TYRES]}
 \end{cases}$$
 
 If the car pits:

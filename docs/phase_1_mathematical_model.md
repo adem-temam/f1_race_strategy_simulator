@@ -102,12 +102,12 @@ where:
 
 ### 2.5 Pit Stop Time Loss Model
 In Formula 1, entering the pit lane incurs a net time loss known as the **pit loss delta** ($\Delta T_{\text{pit}}$):
-$$\Delta T_{\text{pit}} = T_{\text{transit}} + T_{\text{stationary}} - T_{\text{track\_equivalent}}$$
+$$\Delta T_{\text{pit}} = T_{\text{transit}} + T_{\text{stationary}} - T_{\text{track, equiv}}$$
 
 where:
 * $T_{\text{transit}}$ is the transit time through the pit lane at pit speed limit (e.g. $80\text{ km/h}$).
 * $T_{\text{stationary}}$ is the time the car is stationary for the 4-wheel change (typically $\approx 2.2 - 2.8\text{ s}$).
-* $T_{\text{track\_equivalent}}$ is the time a car on the racing circuit would have taken to travel the equivalent distance between pit entry and pit exit at racing speeds.
+* $T_{\text{track, equiv}}$ is the time a car on the racing circuit would have taken to travel the equivalent distance between pit entry and pit exit at racing speeds.
 
 In modern F1 circuits, net pit loss $\Delta T_{\text{pit}}$ typically ranges from $19.0\text{ s}$ to $25.0\text{ s}$.
 
@@ -118,9 +118,9 @@ The total race time for strategy $S$ is the sum of all individual lap times plus
 $$T_{\text{race}}(S) = \sum_{n=1}^N T_{\text{lap}}(n) + \sum_{k=1}^{K-1} \Delta T_{\text{pit}}$$
 
 Alternatively, pit loss can be recorded directly onto the pit-in lap $p_k$:
-$$T_{\text{lap\_effective}}(n) = T_{\text{lap}}(n) + \mathbb{I}_{\{n \in \{p_1, \dots, p_{K-1}\}\}} \cdot \Delta T_{\text{pit}}$$
+$$T_{\text{lap, eff}}(n) = T_{\text{lap}}(n) + \mathbb{I}_{\{n \in \{p_1, \dots, p_{K-1}\}\}} \cdot \Delta T_{\text{pit}}$$
 such that:
-$$T_{\text{race}}(S) = \sum_{n=1}^N T_{\text{lap\_effective}}(n)$$
+$$T_{\text{race}}(S) = \sum_{n=1}^N T_{\text{lap, eff}}(n)$$
 
 ---
 

@@ -58,6 +58,9 @@ Thumbs.db
 *.svg
 *.pdf
 *.log
+scripts/capture_*
+capture_*.py
+capture_*.js
 benchmark_output.json
 benchmark_results*.json
 benchmark_results_*.json
