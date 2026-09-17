@@ -46,6 +46,49 @@ __all__ = [
     "CrossoverFinder",
     "PhaseDiagram2D",
     "RobustnessAnalyzer",
+    "HistoricalLap",
+    "HistoricalStint",
+    "HistoricalPitStop",
+    "HistoricalRaceData",
+    "load_historical_data",
+    "filter_clean_laps",
+    "FittedCompoundParam",
+    "EmpiricalCircuitParameters",
+    "estimate_empirical_parameters",
+    "FuelCorrectionEstimator",
+    "TyreDegradationFitter",
+    "ValidationMetrics",
+    "DiscrepancyDiagnostic",
+    "RaceBacktester",
+    "DiscrepancyAnalyzer",
+    "plot_empirical_degradation_fit",
+    "plot_lap_residuals",
+    "plot_strategy_backtest_gantt",
 ]
 
-
+from src.data_pipeline import (
+    HistoricalLap,
+    HistoricalPitStop,
+    HistoricalRaceData,
+    HistoricalStint,
+    filter_clean_laps,
+    load_historical_data,
+)
+from src.estimation import (
+    EmpiricalCircuitParameters,
+    FittedCompoundParam,
+    FuelCorrectionEstimator,
+    TyreDegradationFitter,
+    estimate_empirical_parameters,
+)
+from src.validation import (
+    DiscrepancyAnalyzer,
+    DiscrepancyDiagnostic,
+    RaceBacktester,
+    ValidationMetrics,
+)
+from src.visualization import (
+    plot_empirical_degradation_fit,
+    plot_lap_residuals,
+    plot_strategy_backtest_gantt,
+)

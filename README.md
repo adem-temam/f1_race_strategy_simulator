@@ -53,6 +53,14 @@ where $K$ is the number of stints and $\Delta T_{\text{pit}}$ is the net pit lan
 
 ```text
 race_strategy_simulator/
+├── data/
+│   └── raw/             # Bundled offline datasets (bahrain_2024.json, barcelona_2024.json, monza_2024.json)
+├── docs/
+│   ├── phase_1_mathematical_model.md
+│   ├── phase_2_mathematical_model.md
+│   ├── phase_3_mathematical_model.md
+│   ├── phase_4_mathematical_model.md
+│   └── phase_5_mathematical_model.md
 ├── src/
 │   ├── tyres.py         # TyreCompound dataclass, wear curves & Pirelli compound specs
 │   ├── fuel.py          # FuelModel consumption & weight penalty calculations
@@ -64,9 +72,16 @@ race_strategy_simulator/
 │   ├── stochastic.py    # Stochastic noise parameters & probability distributions
 │   ├── montecarlo.py    # Vectorized Monte Carlo engine & win probability matrix
 │   ├── optimization.py  # DP Solver, Combinatorial Grid Search, Pit Windows & Pareto
-│   ├── sensitivity.py   # Parameter sweeps, Brent's root-finding, 2D phase maps & regret
-│   └── visualization.py # KDE, Histograms, CDFs, Boxplots, 1D/2D Phase Maps & Dashboard
+│   ├── data_pipeline.py # OpenF1 REST API client, local JSON caching & clean telemetry filter
+│   ├── estimation.py    # Fuel mass correction & multi-driver polynomial regression for wear
+│   ├── validation.py    # Historical strategy backtester, accuracy metrics & discrepancy diagnostics
+│   └── visualization.py # Empirical wear curves, residuals, Gantt backtest & executive dashboards
 ├── tests/
+│   ├── test_data_pipeline.py
+│   ├── test_estimation.py
+│   ├── test_validation.py
+│   ├── test_circuit_evaluations.py
+│   ├── test_limitations_fixed.py
 │   ├── test_tyres.py
 │   ├── test_fuel.py
 │   ├── test_pitstop.py
@@ -77,7 +92,8 @@ race_strategy_simulator/
 │   ├── test_visualization.py
 │   ├── test_optimization.py
 │   └── test_sensitivity.py
-├── run_simulation.py    # Interactive CLI runner with simulation, optimization & sensitivity modes
+├── run_simulation.py    # Interactive CLI runner with simulation, optimization, sensitivity & validation
+├── run_validation.py    # Dedicated Phase 5 validation CLI runner
 ├── requirements.txt
 └── README.md
 ```
@@ -129,7 +145,23 @@ python3 run_simulation.py --circuit bahrain --phase-map --plot
 python3 run_simulation.py --circuit bahrain --sensitivity --plot
 ```
 
-### 4. Evaluate Preset Strategies via CLI
+### 4. Historical Data Validation & Empirical Telemetry Calibration (Phase 5)
+Ingest real Formula 1 race telemetry, fit empirical wear coefficients ($\alpha_c, \beta_c$), and backtest model recommendations against real 2024 Grand Prix winners:
+```bash
+# Run strategy backtest and causal discrepancy diagnostics on Bahrain GP
+python3 run_simulation.py --circuit bahrain --validate
+
+# Inspect empirical parameter regression table (wear alpha/beta, pit loss, lap noise)
+python3 run_simulation.py --circuit barcelona --fit-params
+
+# Run full dedicated validation suite with visual plots (wear curves, residuals, Gantt charts)
+python3 run_validation.py --circuit monza --plot
+
+# Execute backtest across all 3 benchmark circuits simultaneously
+python3 run_validation.py --circuit all
+```
+
+### 5. Evaluate Preset Strategies via CLI
 Run the default strategy comparison on Bahrain GP (57 laps):
 ```bash
 python3 run_simulation.py --circuit bahrain
@@ -221,7 +253,7 @@ Run the automated test suite with `pytest`:
 pytest -v
 ```
 
-All 64 unit tests verify model mechanics, fuel consumption conservation, pit stop accounting, FIA rule compliance, Bellman DAG optimality, Pareto frontiers, Brent crossover precision, and 2D phase maps.
+All 76 unit tests verify model mechanics, fuel consumption conservation, pit stop accounting, FIA rule compliance, Bellman DAG optimality, Pareto frontiers, Brent crossover precision, 2D phase maps, OpenF1 offline cache ingestion, empirical polynomial wear regression, strategy backtests, and causal discrepancy diagnostics.
 
 ---
 
@@ -231,5 +263,5 @@ All 64 unit tests verify model mechanics, fuel consumption conservation, pit sto
 - [x] **Phase 2: Monte Carlo Simulation & Stochastic Uncertainty** (lap variance, pit stop delays, wear deviations, distribution visualizer)
 - [x] **Phase 3: Strategy Optimization Engine** (Dynamic Programming DAG, Combinatorial Search, tactical pit windows, Pareto risk modeling)
 - [x] **Phase 4: Sensitivity Analysis & Decision Phase Maps** (crossover tipping points, Brent's method root-finding, 2D decision phase boundaries, elasticity, and minimax regret)
-- [ ] **Phase 5: Real-World Historical Data Integration** (FastF1 / Ergast parameter fitting and race validation)
+- [x] **Phase 5: Real-World Historical Data Integration & Validation** (OpenF1 ingestion, local offline JSON cache, fuel correction, empirical polynomial regression for tyre wear, strategy backtesting against 2024 winners, and discrepancy diagnostics)
 - [ ] **Phase 6: Interactive Dashboard & Scientific Visualization**

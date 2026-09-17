@@ -662,3 +662,195 @@ def plot_sensitivity_dashboard(
     else:
         plt.show()
 
+
+def plot_empirical_degradation_fit(
+    params: "EmpiricalCircuitParameters",
+    clean_laps: list["HistoricalLap"],
+    title: Optional[str] = None,
+    save_path: Optional[str | Path] = None,
+) -> None:
+    """Plot scatter of empirical tyre degradation with fitted quadratic curves."""
+    fig, ax = plt.subplots(figsize=(12, 7))
+    sns.set_theme(style="whitegrid")
+
+    palette = {
+        "Soft": "#E10600",
+        "Medium": "#FFD700",
+        "Hard": "#A0A0A0",
+        "C1": "#A0A0A0",
+        "C2": "#FFD700",
+        "C3": "#E10600",
+        "C4": "#9932CC",
+        "C5": "#FF69B4",
+    }
+
+    # Group clean laps by compound and compute empirical degradation
+    compounds_present = [c for c in params.compounds.keys() if params.compounds[c].sample_count > 0]
+    stints_dict: dict[tuple[int, int], list] = {}
+    for l in clean_laps:
+        if l.is_clean and l.compound and l.stint_number is not None and l.tyre_age and l.tyre_age >= 1:
+            stints_dict.setdefault((l.driver_number, l.stint_number), []).append(l)
+
+    # Plot scatter points per compound
+    for comp_name in compounds_present:
+        color = palette.get(comp_name, "#333333")
+        cp = params.compounds[comp_name]
+
+        # Gather points
+        ages = []
+        deltas = []
+        for (d_num, s_num), laps in stints_dict.items():
+            if not laps or laps[0].compound.upper() != comp_name.upper():
+                continue
+            early = [l.lap_duration for l in laps if l.tyre_age and 2 <= l.tyre_age <= 5]
+            base_t = float(np.median(early)) if early else laps[0].lap_duration
+            for l in laps:
+                ages.append(l.tyre_age)
+                deltas.append(l.lap_duration - base_t)
+
+        if ages:
+            ax.scatter(
+                ages,
+                deltas,
+                alpha=0.25,
+                s=20,
+                color=color,
+                label=f"{comp_name} Telemetry (N={len(ages)})",
+            )
+
+        # Plot fitted curve: D(a) = alpha * a + beta * a^2
+        max_age = max(ages) if ages else 35
+        curve_ages = np.linspace(1, max(30, max_age), 100)
+        curve_deg = cp.alpha * curve_ages + cp.beta * (curve_ages**2)
+        ax.plot(
+            curve_ages,
+            curve_deg,
+            color=color,
+            linewidth=3,
+            label=f"{comp_name} Fit: alpha={cp.alpha:.4f}, beta={cp.beta:.6f} (R2={cp.r_squared:.2f})",
+        )
+
+    ax.set_title(title or f"Empirical Tyre Degradation Curves — {params.circuit_name} ({params.year})", fontsize=14)
+    ax.set_xlabel("Tyre Age (Laps Completed in Stint)", fontsize=12)
+    ax.set_ylabel("Pace Degradation Delta (Seconds)", fontsize=12)
+    ax.set_ylim(-1.0, 5.5)
+    ax.legend(fontsize=10, loc="upper left")
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Empirical wear plot saved to {save_path}")
+    else:
+        plt.show()
+
+
+def plot_lap_residuals(
+    lap_numbers: list[int],
+    sim_laps: list[float],
+    actual_laps: list[float],
+    circuit_name: str = "Circuit",
+    driver_name: str = "Driver",
+    save_path: Optional[str | Path] = None,
+) -> None:
+    """Plot lap-by-lap comparison and residual error (Actual - Simulated)."""
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={"height_ratios": [2, 1]})
+    sns.set_theme(style="whitegrid")
+
+    # Panel 1: Lap Times
+    ax1.plot(lap_numbers, actual_laps, label=f"Actual Telemetry ({driver_name})", color="black", linewidth=1.8, marker="o", markersize=3)
+    ax1.plot(lap_numbers, sim_laps, label="Calibrated Simulation", color="crimson", linewidth=2.0, linestyle="--")
+    ax1.set_title(f"Lap Pace Fidelity — {circuit_name}: {driver_name}", fontsize=14)
+    ax1.set_ylabel("Lap Time (Seconds)", fontsize=12)
+    ax1.legend(fontsize=11)
+
+    # Panel 2: Residuals
+    residuals = np.array(actual_laps) - np.array(sim_laps)
+    rmse = float(np.sqrt(np.mean(residuals**2)))
+    mae = float(np.mean(np.abs(residuals)))
+
+    ax2.axhline(0, color="grey", linestyle="-", alpha=0.8)
+    ax2.bar(lap_numbers, residuals, color=np.where(residuals > 0, "salmon", "skyblue"), width=0.8, alpha=0.8)
+    ax2.axhline(mae, color="orange", linestyle=":", label=f"+MAE ({mae:.2f}s)")
+    ax2.axhline(-mae, color="orange", linestyle=":", label=f"-MAE (-{mae:.2f}s)")
+    ax2.set_title(f"Residual Error (Actual - Simulated) | RMSE = {rmse:.3f}s, MAE = {mae:.3f}s", fontsize=12)
+    ax2.set_xlabel("Lap Number", fontsize=12)
+    ax2.set_ylabel("Residual Delta (s)", fontsize=11)
+    ax2.set_ylim(-3.0, 3.0)
+    ax2.legend(fontsize=9, loc="upper right")
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Lap residuals plot saved to {save_path}")
+    else:
+        plt.show()
+
+
+def plot_strategy_backtest_gantt(
+    metrics_list: list["ValidationMetrics"],
+    save_path: Optional[str | Path] = None,
+) -> None:
+    """Plot side-by-side Gantt stint bars comparing Actual Strategies vs Optimizer."""
+    fig, ax = plt.subplots(figsize=(14, max(4, len(metrics_list) * 2.2)))
+    sns.set_theme(style="whitegrid")
+
+    palette = {
+        "Soft": "#E10600",
+        "Medium": "#FFD700",
+        "Hard": "#D3D3D3",
+        "C1": "#D3D3D3",
+        "C2": "#FFD700",
+        "C3": "#E10600",
+        "C4": "#9932CC",
+        "C5": "#FF69B4",
+    }
+
+    y_labels = []
+    y_positions = []
+    y_idx = 0
+
+    for m in metrics_list:
+        # 1. Actual
+        y_positions.append(y_idx)
+        y_labels.append(f"{m.circuit_name}\nActual: {m.driver_name}")
+
+        start_lap = 1
+        for part in m.actual_strategy_desc.split(" -> "):
+            comp, l_str = part.split(" (")
+            stint_len = int(l_str.replace("L)", ""))
+            color = palette.get(comp.capitalize(), "#666666")
+            ax.barh(y_idx, stint_len, left=start_lap - 1, color=color, edgecolor="black", height=0.5, alpha=0.85)
+            ax.text(start_lap - 1 + stint_len / 2, y_idx, f"{comp} ({stint_len}L)", ha="center", va="center", fontsize=9, fontweight="bold")
+            start_lap += stint_len
+
+        # 2. Predicted Optimal
+        y_idx += 1
+        y_positions.append(y_idx)
+        y_labels.append(f"{m.circuit_name}\nModel Optimal")
+
+        start_lap = 1
+        for part in m.optimal_strategy_desc.split(" -> "):
+            comp, l_str = part.split(" (")
+            stint_len = int(l_str.replace("L)", ""))
+            color = palette.get(comp.capitalize(), "#666666")
+            ax.barh(y_idx, stint_len, left=start_lap - 1, color=color, edgecolor="black", height=0.5, alpha=0.6, hatch="//")
+            ax.text(start_lap - 1 + stint_len / 2, y_idx, f"{comp} ({stint_len}L)", ha="center", va="center", fontsize=9, fontweight="bold")
+            start_lap += stint_len
+
+        y_idx += 1.5
+
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(y_labels, fontsize=10)
+    ax.set_xlabel("Race Lap Number", fontsize=12)
+    ax.set_title("Historical Strategy Backtest Comparison (Actual vs Model Optimal)", fontsize=14)
+    ax.set_xlim(0, max(m.actual_stops * 30 for m in metrics_list) + 70)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Backtest Gantt plot saved to {save_path}")
+    else:
+        plt.show()
