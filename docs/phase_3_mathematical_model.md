@@ -121,16 +121,21 @@ At the end of lap $n$, the driver chooses action $u_n \in \{\text{STAY}\} \cup \
 #### Bellman Optimality Equation
 Let $V(n, c, a, u)$ denote the minimum time to complete the remainder of the race from state $(n, c, a, u)$:
 
-$$V(n, c, a, u) = \min \begin{cases} 
-T_{\text{lap}}(n, c, a) + V(n+1, c, a+1, u) & \text{[Action: STAY]} \\
-T_{\text{lap}}(n, c, a) + t_{\text{pit}} + \min_{c' \ne c} V(n+1, c', 1, 1) & \text{[Action: PIT to } c'\text{]}
-\end{cases}$$
+$$
+V(n, c, a, u) = \min \begin{cases} 
+T_{\text{lap}}(n, c, a) + V(n+1, c, a+1, u) & \text{Stay out} \\
+T_{\text{lap}}(n, c, a) + t_{\text{pit}} + \min\limits_{c' \ne c} V(n+1, c', 1, 1) & \text{Pit for compound } c'
+\end{cases}
+$$
 
 #### Boundary Conditions (Terminal Lap $N$)
-$$V(N, c, a, u) = \begin{cases} 
+
+$$
+V(N, c, a, u) = \begin{cases} 
 T_{\text{lap}}(N, c, a) & \text{if } u = 1 \text{ (valid compound diversity)} \\ 
 +\infty & \text{if } u = 0 \text{ (disqualified for single-compound violation)} 
-\end{cases}$$
+\end{cases}
+$$
 
 #### Computational Complexity
 * Total states: $|\mathcal{X}| \approx N \times |\mathcal{C}| \times a_{\max} \times 2 \approx 60 \times 3 \times 45 \times 2 \approx 16,200$ states.

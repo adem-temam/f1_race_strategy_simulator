@@ -56,10 +56,14 @@ where $K$ is the number of stints and $\Delta T_{\text{pit}}$ is the net pit lan
 
 ### 5. Dynamic Programming & Bellman Optimality
 The global minimum-time race strategy is computed via backward induction across the Directed Acyclic Graph (DAG) of race laps:
-$$V(n, c, a) = \min \begin{cases}
-V(n+1, c, a+1) + T_{\text{lap}}(n, c, a), & \text{[STAY OUT]} \\
-\min\limits_{c' \neq c} \Big[ V(n+1, c', 1) + T_{\text{lap}}(n, c', 1) \Big] + \Delta T_{\text{pit}}, & \text{[PIT]}
-\end{cases}$$
+
+$$
+V(n, c, a) = \min \begin{cases}
+V(n+1, c, a+1) + T_{\text{lap}}(n, c, a), & \text{Stay out} \\
+\min\limits_{c' \neq c} \Big[ V(n+1, c', 1) + T_{\text{lap}}(n, c', 1) \Big] + \Delta T_{\text{pit}}, & \text{Pit for compound } c'
+\end{cases}
+$$
+
 subject to the terminal boundary condition $V(N+1, c, a) = 0$ and the FIA requirement of using at least two distinct dry tyre compounds.
 
 ### 6. Strategic Regret
