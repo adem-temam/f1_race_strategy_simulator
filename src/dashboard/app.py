@@ -83,6 +83,12 @@ class StrategyParseHelper:
                 comp = compounds.get("Medium") or compounds.get("C2")
             elif comp_char in ("H", "C1"):
                 comp = compounds.get("Hard") or compounds.get("C1")
+            elif comp_char == "I":
+                from src.tyres import PIRELLI_COMPOUNDS
+                comp = compounds.get("Intermediate") or PIRELLI_COMPOUNDS.get("Intermediate")
+            elif comp_char == "W":
+                from src.tyres import PIRELLI_COMPOUNDS
+                comp = compounds.get("Wet") or PIRELLI_COMPOUNDS.get("Wet")
             else:
                 comp = compounds.get(comp_char)
 
