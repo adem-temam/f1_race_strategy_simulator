@@ -47,15 +47,18 @@ To isolate valid racing pace, raw telemetry undergoes a multi-stage filtering pi
 
 ## 3. Fuel Mass Burn & Pace Normalization
 
-In Formula 1, cars start the race with up to $105\text{ kg}$ of fuel (governed by technical regulations). As fuel burns off at approximately $\Delta m_f \approx 1.7 - 1.9\text{ kg/lap}$, the vehicle sheds mass, gaining between $0.055\text{s}$ and $0.065\text{s}$ per lap in pure acceleration and braking performance.
+In Formula 1, cars start the race with maximum permissible fuel governed by technical regulations. As fuel burns off during each lap, the vehicle sheds mass, gaining significant pace in pure acceleration and braking performance.
+
+> [!NOTE]
+> **Historical Calibration vs Modernized Regulations**: In historical OpenF1 telemetry backtesting (e.g. 2024 season datasets), the empirical regression formula was using the outdated FIA regulation ($100 - 105\text{ kg}$ initial fuel mass, burn rate $\Delta m_f \approx 1.7 - 1.9\text{ kg/lap}$, and $\gamma_{\text{fuel}} \approx 0.033\text{ s/kg}$). Under modernized FIA regulations, initial fuel capacity drops to $70 - 75\text{ kg}$ with sustainable biofuels, burn rate drops to $\Delta m_f \approx 1.25 - 1.45\text{ kg/lap}$, and sensitivity drops to $\gamma_{\text{fuel}} \approx 0.025 - 0.028\text{ s/kg}$. The normalization equations below apply identically across both regulatory regimes by parameterizing $m_{f, 0}$ and $\gamma_{\text{fuel}}$.
 
 This continuous weight reduction creates a fundamental modeling challenge: **fuel burn masks tyre degradation**. In uncorrected timing data, lap times frequently appear flat or even improve over the course of a 20-lap stint, despite substantial rubber wear.
 
 ### 3.1 Fuel Correction Formulation
 Let:
-* $m_{f, 0}$: Starting fuel load ($100 - 105\text{ kg}$).
+* $m_{f, 0}$: Starting fuel load ($70 - 75\text{ kg}$ under modernized regulations, or $100 - 105\text{ kg}$ under outdated historical calibrations).
 * $\Delta m_f$: Average fuel consumption per lap ($\Delta m_f = \frac{m_{f, 0}}{N_{\text{total}}}$).
-* $\gamma_{\text{fuel}}$: Fuel mass sensitivity ($\approx 0.030 - 0.035\text{ s/kg}$).
+* $\gamma_{\text{fuel}}$: Fuel mass sensitivity ($\approx 0.028\text{ s/kg}$ modern, vs $\approx 0.033\text{ s/kg}$ outdated).
 * $E_{\text{track}}(n)$: Track evolution grip improvement from rubber deposition:
   $$E_{\text{track}}(n) = E_{\text{total}} \cdot \left(\frac{n - 1}{N - 1}\right)$$
 

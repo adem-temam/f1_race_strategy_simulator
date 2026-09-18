@@ -59,6 +59,11 @@ A candidate strategy $S = (\mathbf{c}, \boldsymbol{\ell})$ belongs to the feasib
    The number of pit stops is bounded to eliminate non-competitive hyper-frequent stops:
    $$0 \le K - 1 \le K_{\max} \quad (K_{\max} = 3)$$
 
+5. **Exact Pit Stop Cardinality Filtering (Tactical Constraint):**
+   When testing specific tactical scenarios (e.g. comparing forced 1-stop vs 2-stop vs 3-stop programs), the stint count may be constrained to exact cardinality:
+   $$K = N_{\text{stops}} + 1$$
+   guaranteeing that exactly $N_{\text{stops}}$ pit stops ($K$ tyre stints) are evaluated without being superseded by lower-stop alternatives.
+
 ---
 
 ### 2.3 Objective Functions ($\mathcal{J}$)

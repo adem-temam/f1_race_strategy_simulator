@@ -81,7 +81,10 @@ $$\alpha_{\text{Soft}} > \alpha_{\text{Medium}} > \alpha_{\text{Hard}}$$
 ---
 
 ### 2.4 Fuel Consumption & Penalty Model $F(m_f)$
-Formula 1 cars start with a maximum permissible race fuel load (typically $\sim 100 - 110\text{ kg}$) and burn fuel almost linearly across laps.
+Formula 1 cars start with a maximum permissible race fuel load and burn fuel almost linearly across laps.
+
+> [!NOTE]
+> **Regulatory Evolution Note**: Initial iterations of the mathematical model were configured using outdated FIA regulations ($100 - 110\text{ kg}$ maximum fuel capacity, $m_{f, 0} = 105.0\text{ kg}$, $798\text{ kg}$ vehicle minimum mass, and $\gamma_{\text{fuel}} \approx 0.033\text{ s/kg}$). Under modernized FIA regulations incorporating 100% sustainable fuels and upgraded hybrid electrical delivery (50% ICE / 50% MGU-K), fuel capacity is reduced to $70 - 75\text{ kg}$ (standard benchmark $m_{f, 0} = 75.0\text{ kg}$), vehicle minimum weight drops to $768\text{ kg}$, and fuel sensitivity decreases to $\gamma_{\text{fuel}} \approx 0.025 - 0.028\text{ s/kg}$.
 
 Let:
 * $m_{f, 0}$: Initial fuel mass at race start ($n = 1$).
@@ -96,7 +99,7 @@ The lap-time penalty induced by fuel mass is directly proportional to weight:
 $$F\big(m_f(n)\big) = \gamma_{\text{fuel}} \cdot m_f(n)$$
 
 where:
-* $\gamma_{\text{fuel}}$ is the fuel sensitivity coefficient ($\approx 0.030 - 0.035\text{ s} \cdot \text{kg}^{-1}$, meaning $10\text{ kg}$ of fuel costs $\approx 0.33\text{ s}$ per lap).
+* $\gamma_{\text{fuel}}$ is the fuel sensitivity coefficient ($\approx 0.025 - 0.028\text{ s} \cdot \text{kg}^{-1}$ under modernized regulations, meaning $10\text{ kg}$ of fuel costs $\approx 0.28\text{ s}$ per lap; note that the previous formula was using the outdated FIA regulation value of $\approx 0.033\text{ s} \cdot \text{kg}^{-1}$).
 
 ---
 
@@ -131,9 +134,9 @@ To validate the model with realistic numbers:
 * **Baseline Pace:** $T_{\text{base}} = 92.000\text{ s}$ ($1\text{m } 32.000\text{s}$)
 * **Pit Loss Delta:** $\Delta T_{\text{pit}} = 22.500\text{ s}$
 * **Fuel Parameters:**
-  - $m_{f, 0} = 105.0\text{ kg}$, $m_{f, \text{res}} = 2.0\text{ kg}$
-  - Burn rate $\Delta m_f \approx 1.807\text{ kg/lap}$
-  - Sensitivity $\gamma_{\text{fuel}} = 0.033\text{ s/kg}$
+  - $m_{f, 0} = 75.0\text{ kg}$ (modernized standard regulation; note the original formula was using the outdated FIA regulation of $105.0\text{ kg}$), $m_{f, \text{res}} = 2.0\text{ kg}$
+  - Burn rate $\Delta m_f \approx \frac{75.0 - 2.0}{57} \approx 1.281\text{ kg/lap}$ ($\approx 1.807\text{ kg/lap}$ under outdated $105\text{ kg}$ rules)
+  - Sensitivity $\gamma_{\text{fuel}} = 0.028\text{ s/kg}$ (adjusted from outdated $0.033\text{ s/kg}$)
 * **Compounds:**
   - **Soft (C3):** $\Delta_{\text{Soft}} = -0.650\text{ s}$, $\alpha = 0.110\text{ s/lap}$, $\beta = 0.0015\text{ s/lap}^2$, cliff at lap 18 ($\kappa = 0.05$).
   - **Medium (C2):** $\Delta_{\text{Med}} = 0.000\text{ s}$, $\alpha = 0.065\text{ s/lap}$, $\beta = 0.0008\text{ s/lap}^2$, cliff at lap 28 ($\kappa = 0.04$).

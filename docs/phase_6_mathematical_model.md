@@ -29,7 +29,7 @@ $$\theta = \big( T_{\text{base}}, \; m_0, \; \beta_{\text{burn}}, \; \lambda_{\t
 
 where:
 * $T_{\text{base}}$: Base circuit lap time on fresh tyres and zero fuel ($\text{seconds}$).
-* $m_0$: Initial fuel load ($\text{kg}$), typically $100 - 105\text{ kg}$ under 2024 FIA regulations.
+* $m_0$: Initial fuel load ($\text{kg}$), standardized at $70 - 75\text{ kg}$ under modernized technical regulations (note that earlier formulas were using the outdated FIA regulation baseline of $100 - 105\text{ kg}$).
 * $\beta_{\text{burn}}$: Fuel burn rate per lap ($\text{kg/lap}$).
 * $\lambda_{\text{fuel}}$: Lap time sensitivity to fuel mass ($\text{s/kg}$).
 * $t_{\text{pit}}$: Nominal pit lane time loss ($\text{seconds}$), sum of transit loss and stationary service.
@@ -44,7 +44,7 @@ A counterfactual scenario is an intervention represented by an operator:
 $$\mathcal{P}: \Theta \times \Delta \to \Theta', \quad \theta' = \mathcal{P}(\theta_0, \mathbf{p})$$
 
 where $\mathbf{p} \in \Delta$ is a perturbation descriptor:
-$$\mathbf{p} = \big( \mu_{\text{deg}}, \; \Delta t_{\text{pit}}, \; \Delta \delta_{\text{compound}}, \; \alpha_L, \; \mathbf{reg}_{2026} \big)$$
+$$\mathbf{p} = \big( \mu_{\text{deg}}, \; \Delta t_{\text{pit}}, \; \Delta \delta_{\text{compound}}, \; \alpha_L, \; \mathbf{r}_{\text{aero}} \big)$$
 
 The transformed parameters $\theta'$ satisfy:
 1. **Tyre Degradation Scaling**:
@@ -55,8 +55,8 @@ The transformed parameters $\theta'$ satisfy:
    $$\delta_c' = \delta_c + \Delta \delta_c$$
 4. **Race Distance Contraction/Extension**:
    $$N_{\text{laps}}' = \lfloor \alpha_L \cdot N_{\text{laps}} \rfloor, \quad \alpha_L \in (0, 1.5]$$
-5. **2026 Technical Regulation Transformation**:
-   $$m_0' = 70.0\text{ kg} \quad (\text{down from } 100\text{ kg}), \quad \beta_{\text{burn}}' = \frac{70.0}{N_{\text{laps}}}, \quad T_{\text{base}}' = T_{\text{base}} - 1.20\text{s}$$
+5. **Modern Technical Regulation Transformation**:
+   $$m_0' = 75.0\text{ kg} \quad (\text{replacing outdated } 105.0\text{ kg}), \quad \beta_{\text{burn}}' = \frac{75.0 - m_{\text{res}}}{N_{\text{laps}}}, \quad \lambda_{\text{fuel}}' = 0.028\text{ s/kg}$$
 
 ---
 
@@ -193,15 +193,20 @@ Using the mathematical engines built across Phases 1 through 6, we provide analy
 
 ---
 
-### RQ6: How will the 2026 Formula 1 technical regulations alter strategic planning?
+### RQ6: How do updated technical regulations (active aerodynamics, Manual Override Mode, and reduced mass) alter strategic planning?
+
+> [!NOTE]
+> Previously, the formula was using the outdated FIA regulation ($105.0\text{ kg}$ initial fuel mass, $798\text{ kg}$ car mass, and legacy DRS dirty air dependencies). Under modernized FIA regulations, vehicles adopt sustainable fuels, active aerodynamics, and enhanced electrical deployment.
 
 * **Regulatory Physics Parameters**:
-  * Minimum fuel load reduced: $m_0 = 70.0\text{ kg}$ (vs $105.0\text{ kg}$).
-  * Mass reduction penalty: Initial fuel penalty drops from $105 \times 0.033 = 3.46\text{s}$ to $70 \times 0.033 = 2.31\text{s}$, an immediate $+1.15\text{s/lap}$ speedup at race start.
-  * Active aerodynamics: Active straight-line drag reduction reduces lateral slip on exits, lowering tyre surface temperatures and reducing $\beta_{\text{deg}}$ by an estimated $10-15\%$.
+  * Fuel load standardized: $m_0 = 75.0\text{ kg}$ (replacing outdated $105.0\text{ kg}$).
+  * Mass reduction penalty: Initial fuel penalty drops from $105 \times 0.033 = 3.46\text{s}$ to $75 \times 0.028 = 2.10\text{s}$, an immediate $+1.36\text{s/lap}$ speedup at race start.
+  * Vehicle minimum mass: Decreased from $798\text{ kg}$ to $768\text{ kg}$ ($-30\text{ kg}$ total vehicle weight).
+  * Active aerodynamics: Dual-state active wings (low-drag X-mode on straights, high-downforce Z-mode in corners) reduce lateral slip on traction exits, lowering tyre surface temperatures and reducing $\beta_{\text{deg}}$ by $10-15\%$.
+  * Manual Override Mode (MOM): Replaces legacy DRS with targeted high-power electrical boost ($350\text{ kW}$ tapering up to $337\text{ km/h}$) for cars within $1.0\text{s}$, mitigating dirty-air penalties without artificial flap dependency.
 * **Strategic Consequences**:
-  * Total race duration decreases by $\sim 140 - 180\text{s}$ ($2.5 - 3.0$ minutes faster).
-  * Reduced tyre wear extends stint lifetimes, shifting marginal circuits (e.g. Silverstone, Spa) closer to 1-stop territory, while reducing the strategic regret of 1-stop strategies at high-wear tracks.
+  * Total race duration decreases by $\sim 150 - 200\text{s}$ ($2.5 - 3.3$ minutes faster).
+  * Reduced thermal tyre degradation extends stint lifetimes, shifting marginal circuits (e.g. Silverstone, Spa) closer to 1-stop territory, while expanding tactical pit stop windows across all 24 Grand Prix.
 
 ---
 
