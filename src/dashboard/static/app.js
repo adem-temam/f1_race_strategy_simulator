@@ -86,6 +86,20 @@ function updateCircuitBadges() {
   document.getElementById("circuitLapsBadge").textContent = `${c.total_laps} Laps`;
   document.getElementById("circuitBasePaceBadge").textContent = `Base: ${c.base_lap_time}s`;
 
+  const elevBadge = document.getElementById("circuitElevationBadge");
+  if (elevBadge) {
+    const elev = c.elevation_change_m !== undefined ? c.elevation_change_m : 0.0;
+    elevBadge.textContent = `⛰️ ${elev}m Elevation`;
+    elevBadge.title = c.circuit_type ? `${c.circuit_type} (${elev}m elevation delta)` : `${elev}m elevation delta`;
+  }
+
+  const durBadge = document.getElementById("circuitDurationBadge");
+  if (durBadge) {
+    const dur = c.typical_race_duration || "~90 min";
+    durBadge.textContent = `⏱️ ${dur.split('(')[0].trim()}`;
+    durBadge.title = `Typical race time: ${dur}`;
+  }
+
   const pitBadge = document.getElementById("circuitPitLossBadge");
   if (pitBadge && c.pit_loss) pitBadge.textContent = `Pit: ${c.pit_loss.toFixed(1)}s`;
 

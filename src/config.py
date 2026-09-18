@@ -495,6 +495,158 @@ CIRCUIT_PRESETS: dict[str, dict] = {
     },
 }
 
+CIRCUIT_METADATA: dict[str, dict] = {
+    "bahrain": {
+        "elevation_change_m": 17.5,
+        "circuit_type": "High-Degradation Desert Permanent (Turn 4 & 10 Compression)",
+        "avg_speed_kmh": 210.0,
+        "typical_race_duration": "90–92 min",
+    },
+    "jeddah": {
+        "elevation_change_m": 12.0,
+        "circuit_type": "Ultra-High-Speed Coastal Street",
+        "avg_speed_kmh": 252.0,
+        "typical_race_duration": "75–80 min",
+    },
+    "melbourne": {
+        "elevation_change_m": 2.6,
+        "circuit_type": "Semi-Permanent Lakeside Street",
+        "avg_speed_kmh": 235.0,
+        "typical_race_duration": "78–82 min",
+    },
+    "suzuka": {
+        "elevation_change_m": 40.4,
+        "circuit_type": "High-Downforce Undulating Figure-8",
+        "avg_speed_kmh": 228.0,
+        "typical_race_duration": "82–85 min",
+    },
+    "shanghai": {
+        "elevation_change_m": 7.4,
+        "circuit_type": "Front-Limited Long-Straight Permanent",
+        "avg_speed_kmh": 205.0,
+        "typical_race_duration": "90–93 min",
+    },
+    "miami": {
+        "elevation_change_m": 5.0,
+        "circuit_type": "Semi-Street Autodrome",
+        "avg_speed_kmh": 220.0,
+        "typical_race_duration": "85–88 min",
+    },
+    "imola": {
+        "elevation_change_m": 34.0,
+        "circuit_type": "Historic Undulating Parkland",
+        "avg_speed_kmh": 230.0,
+        "typical_race_duration": "83–86 min",
+    },
+    "monaco": {
+        "elevation_change_m": 42.0,
+        "circuit_type": "Ultra-High-Downforce Street (Beau Rivage Climb)",
+        "avg_speed_kmh": 155.0,
+        "typical_race_duration": "98–105 min (Slowest F1 Speed)",
+    },
+    "montreal": {
+        "elevation_change_m": 5.2,
+        "circuit_type": "Stop-and-Go Island Circuit",
+        "avg_speed_kmh": 215.0,
+        "typical_race_duration": "85–88 min",
+    },
+    "barcelona": {
+        "elevation_change_m": 29.6,
+        "circuit_type": "High-Downforce Aerodynamic Benchmark",
+        "avg_speed_kmh": 218.0,
+        "typical_race_duration": "88–92 min",
+    },
+    "redbullring": {
+        "elevation_change_m": 63.5,
+        "circuit_type": "Alpine High-Elevation Power (Turn 3 Climb)",
+        "avg_speed_kmh": 240.0,
+        "typical_race_duration": "80–83 min",
+    },
+    "silverstone": {
+        "elevation_change_m": 11.3,
+        "circuit_type": "Flat Former-Airfield High-Speed Flow",
+        "avg_speed_kmh": 238.0,
+        "typical_race_duration": "77–80 min",
+    },
+    "hungaroring": {
+        "elevation_change_m": 34.7,
+        "circuit_type": "Natural Amphitheater Low-Speed Technical",
+        "avg_speed_kmh": 195.0,
+        "typical_race_duration": "92–96 min",
+    },
+    "spa": {
+        "elevation_change_m": 102.2,
+        "circuit_type": "Ardennes Mountain (Eau Rouge 17% Climb)",
+        "avg_speed_kmh": 235.0,
+        "typical_race_duration": "77–80 min",
+    },
+    "zandvoort": {
+        "elevation_change_m": 15.0,
+        "circuit_type": "Coastal Dunes & 19° Banked Corners",
+        "avg_speed_kmh": 218.0,
+        "typical_race_duration": "88–92 min",
+    },
+    "monza": {
+        "elevation_change_m": 12.8,
+        "circuit_type": "Low-Drag Temple of Speed (Highest Speed)",
+        "avg_speed_kmh": 255.0,
+        "typical_race_duration": "72–75 min (Fastest F1 Grand Prix)",
+    },
+    "baku": {
+        "elevation_change_m": 24.0,
+        "circuit_type": "Long-Straight & Medieval Castle Street",
+        "avg_speed_kmh": 210.0,
+        "typical_race_duration": "88–92 min",
+    },
+    "singapore": {
+        "elevation_change_m": 6.0,
+        "circuit_type": "High-Humidity High-Deg Street (Max Stamina)",
+        "avg_speed_kmh": 175.0,
+        "typical_race_duration": "100–110 min (Longest F1 Grand Prix)",
+    },
+    "austin": {
+        "elevation_change_m": 40.9,
+        "circuit_type": "Undulating Modern Circuit (Turn 1 Climb)",
+        "avg_speed_kmh": 210.0,
+        "typical_race_duration": "90–94 min",
+    },
+    "mexico": {
+        "elevation_change_m": 2.8,
+        "circuit_type": "High-Altitude Low-Air-Density (2,285m)",
+        "avg_speed_kmh": 205.0,
+        "typical_race_duration": "93–96 min",
+    },
+    "interlagos": {
+        "elevation_change_m": 43.0,
+        "circuit_type": "Natural Bowl (Senna S Drop & Junção Climb)",
+        "avg_speed_kmh": 220.0,
+        "typical_race_duration": "85–88 min",
+    },
+    "lasvegas": {
+        "elevation_change_m": 6.5,
+        "circuit_type": "Cold-Night Low-Grip Street Strip",
+        "avg_speed_kmh": 240.0,
+        "typical_race_duration": "78–82 min",
+    },
+    "qatar": {
+        "elevation_change_m": 7.0,
+        "circuit_type": "Extreme Lateral Energy Moto-Style",
+        "avg_speed_kmh": 230.0,
+        "typical_race_duration": "82–85 min",
+    },
+    "abudhabi": {
+        "elevation_change_m": 10.7,
+        "circuit_type": "Modern Twilight Harbor Marina",
+        "avg_speed_kmh": 222.0,
+        "typical_race_duration": "84–87 min",
+    },
+}
+
+# Attach metadata to all circuit presets
+for _k, _meta in CIRCUIT_METADATA.items():
+    if _k in CIRCUIT_PRESETS:
+        CIRCUIT_PRESETS[_k].update(_meta)
+
 
 def get_circuit_compounds(circuit_key: str) -> dict[str, TyreCompound]:
     """Return the nominated Pirelli compounds for a circuit (keyed by role and Cx)."""
@@ -547,6 +699,8 @@ def get_circuit_config(circuit_key: str, era: str = "2024") -> CircuitConfig:
         track_evolution_total=preset["track_evolution_total"],
         tyre_degradation_multiplier=preset.get("tyre_degradation_multiplier", 1.0),
         traffic_config=_dict_to_traffic_config(preset["traffic"], era=era),
+        elevation_change_m=preset.get("elevation_change_m", 0.0),
+        circuit_type=preset.get("circuit_type", "Standard"),
     )
 
 
@@ -566,6 +720,8 @@ def create_race_model(circuit_key: str = "bahrain", era: str = "2024") -> RaceMo
         track_evolution_total=preset["track_evolution_total"],
         tyre_degradation_multiplier=preset.get("tyre_degradation_multiplier", 1.0),
         traffic_config=_dict_to_traffic_config(preset["traffic"], era=era),
+        elevation_change_m=preset.get("elevation_change_m", 0.0),
+        circuit_type=preset.get("circuit_type", "Standard"),
     )
 
     if era == "2026":

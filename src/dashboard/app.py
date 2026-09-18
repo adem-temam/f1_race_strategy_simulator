@@ -181,6 +181,10 @@ def get_circuits() -> list[dict[str, Any]]:
             "track_evolution_total": p.get("track_evolution_total", 0.0),
             "compounds": comp_list,
             "default_strategies": p.get("default_strategies", []),
+            "elevation_change_m": p.get("elevation_change_m", 0.0),
+            "circuit_type": p.get("circuit_type", "Standard"),
+            "typical_race_duration": p.get("typical_race_duration", "~90 min"),
+            "avg_speed_kmh": p.get("avg_speed_kmh", 220.0),
         })
     return out
 
