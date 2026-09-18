@@ -85,6 +85,45 @@ function updateCircuitBadges() {
   if (!c) return;
   document.getElementById("circuitLapsBadge").textContent = `${c.total_laps} Laps`;
   document.getElementById("circuitBasePaceBadge").textContent = `Base: ${c.base_lap_time}s`;
+
+  const pitBadge = document.getElementById("circuitPitLossBadge");
+  if (pitBadge && c.pit_loss) pitBadge.textContent = `Pit: ${c.pit_loss.toFixed(1)}s`;
+
+  const degBadge = document.getElementById("circuitDegBadge");
+  if (degBadge && c.tyre_degradation_multiplier) {
+    degBadge.textContent = `Deg: ${c.tyre_degradation_multiplier.toFixed(2)}x`;
+  }
+
+  // Sync sliders to circuit baseline
+  const degSlider = document.getElementById("simDegSlider");
+  const degVal = document.getElementById("simDegVal");
+  if (degSlider && degVal) {
+    degSlider.value = c.tyre_degradation_multiplier || 1.0;
+    degVal.textContent = `${parseFloat(degSlider.value).toFixed(2)}x`;
+  }
+
+  const pitSlider = document.getElementById("simPitSlider");
+  const pitVal = document.getElementById("simPitVal");
+  if (pitSlider && pitVal) {
+    pitSlider.value = c.pit_loss || 22.0;
+    pitVal.textContent = `${parseFloat(pitSlider.value).toFixed(1)}s`;
+  }
+
+  // Populate valid default strategies for this circuit
+  if (c.default_strategies && c.default_strategies.length > 0) {
+    const container = document.getElementById("strategyInputsContainer");
+    if (container) {
+      container.innerHTML = "";
+      c.default_strategies.forEach(s => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "strategy-input-field";
+        input.value = s;
+        input.style.marginBottom = "0.4rem";
+        container.appendChild(input);
+      });
+    }
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -235,7 +274,24 @@ function setupOptimizerControls() {
 }
 
 async function runOptimizer() {
-  const maxStops = parseInt(document.getElementById("optMaxStops").value);
+  const optVal = document.getElementById("optMaxStops").value;
+  let maxStops = 3;
+  let exactStops = null;
+
+  if (optVal === "exact_1") {
+    maxStops = 1;
+    exactStops = 1;
+  } else if (optVal === "exact_2") {
+    maxStops = 2;
+    exactStops = 2;
+  } else if (optVal === "exact_3") {
+    maxStops = 3;
+    exactStops = 3;
+  } else {
+    maxStops = 3;
+    exactStops = null;
+  }
+
   const objective = document.getElementById("optObjective").value;
 
   const btn = document.getElementById("runOptimizerBtn");
@@ -248,6 +304,7 @@ async function runOptimizer() {
       body: JSON.stringify({
         circuit: currentCircuit,
         max_stops: maxStops,
+        exact_stops: exactStops,
         objective: objective,
         mc_iterations: 150,
       }),
@@ -266,7 +323,10 @@ function renderOptimizerResults(data) {
   // 1. Optimal card
   const card = document.getElementById("optimalStrategyCard");
   card.style.display = "block";
-  document.getElementById("optimalStrategyName").textContent = data.optimal_strategy;
+  const stopsCount = data.optimal_stops;
+  const tyresCount = stopsCount + 1;
+  const labelSuffix = ` [${stopsCount} Stop${stopsCount !== 1 ? 's' : ''} / ${tyresCount} Tyres]`;
+  document.getElementById("optimalStrategyName").textContent = data.optimal_strategy + labelSuffix;
   document.getElementById("optimalStrategyTime").textContent = `Total Time: ${data.formatted_optimal_time}`;
   document.getElementById("optimalSolveMetrics").textContent = 
     `Evaluated ${data.evaluations_count.toLocaleString()} strategies in ${data.solve_time_seconds.toFixed(3)}s`;

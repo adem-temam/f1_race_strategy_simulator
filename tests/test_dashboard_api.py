@@ -181,3 +181,65 @@ def test_serve_index_html():
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers.get("content-type", "")
+
+
+def test_24_circuits_catalog():
+    """Verify all 24 Grand Prix of the championship calendar are present."""
+    response = client.get("/api/circuits")
+    assert response.status_code == 200
+    circuits = response.json()
+    assert len(circuits) == 24
+    for c in circuits:
+        assert "id" in c
+        assert "name" in c
+        assert "total_laps" in c
+        assert "base_lap_time" in c
+        assert "pit_loss" in c
+        assert "default_strategies" in c
+        assert len(c["default_strategies"]) >= 1
+
+
+def test_simulate_strict_sorting_guarantee():
+    """Verify results in /api/simulate are sorted strictly ascending by total time."""
+    # Send deliberately out-of-order strategies (2-stop is faster at Bahrain)
+    payload = {
+        "circuit": "bahrain",
+        "strategies": ["M26-H31", "S15-M21-S21"],  # 1-stop first, 2-stop second
+    }
+    response = client.post("/api/simulate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    results = data["results"]
+    assert len(results) == 2
+    # The faster strategy must be index 0 with delta 0.0
+    assert results[0]["strategy"] == "S15-M21-S21"
+    assert results[0]["delta"] == 0.0
+    assert results[1]["strategy"] == "M26-H31"
+    assert results[1]["delta"] > 0.0
+
+
+def test_optimize_exact_stops():
+    """Verify exact_stops=3 returns exactly a 3-stop (4-stint) strategy."""
+    payload = {
+        "circuit": "bahrain",
+        "max_stops": 3,
+        "exact_stops": 3,
+        "objective": "time",
+    }
+    response = client.post("/api/optimize", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["optimal_stops"] == 3
+    # Check that each ranked strategy on the leaderboard has exactly 3 stops
+    for row in data["leaderboard"]:
+        assert row["stops"] == 3
+
+
+def test_get_historical_validation_extended_circuits():
+    """Verify historical validation returns valid calibrated metrics for all circuits."""
+    for c_id in ["silverstone", "monaco", "spa"]:
+        response = client.get(f"/api/historical/{c_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["circuit_name"] is not None
+        assert len(data["fitted_compounds"]) >= 2

@@ -406,13 +406,17 @@ class CombinatorialSearchSolver:
                 yield (l1,) + rest
 
     def generate_candidate_strategies(
-        self, max_stops: int = 2, min_stint_length: int = 5, step: int = 1
+        self,
+        max_stops: int = 2,
+        min_stint_length: int = 5,
+        step: int = 1,
+        exact_stops: Optional[int] = None,
     ) -> list[Strategy]:
         """Generate all FIA-compliant candidate strategies within constraints."""
         candidates = []
 
         # 1-Stop sequences (K=2)
-        if max_stops >= 1:
+        if (exact_stops is None and max_stops >= 1) or exact_stops == 1:
             for c1 in self.compounds:
                 for c2 in self.compounds:
                     if c1.name == c2.name:
@@ -426,7 +430,7 @@ class CombinatorialSearchSolver:
                         candidates.append(Strategy(stints, name=strat_name))
 
         # 2-Stop sequences (K=3)
-        if max_stops >= 2:
+        if (exact_stops is None and max_stops >= 2) or exact_stops == 2:
             for c1 in self.compounds:
                 for c2 in self.compounds:
                     for c3 in self.compounds:
@@ -441,7 +445,7 @@ class CombinatorialSearchSolver:
                             candidates.append(Strategy(stints, name=strat_name))
 
         # 3-Stop sequences (K=4) - only if explicitly requested, with step >= 2
-        if max_stops >= 3:
+        if (exact_stops is None and max_stops >= 3) or exact_stops == 3:
             s3_step = max(2, step)
             for c1 in self.compounds:
                 for c2 in self.compounds:
@@ -460,11 +464,18 @@ class CombinatorialSearchSolver:
         return candidates
 
     def search(
-        self, max_stops: int = 2, min_stint_length: int = 5, step: int = 1
+        self,
+        max_stops: int = 2,
+        min_stint_length: int = 5,
+        step: int = 1,
+        exact_stops: Optional[int] = None,
     ) -> list[tuple[Strategy, float]]:
         """Evaluate and rank all candidates by deterministic total race time."""
         candidates = self.generate_candidate_strategies(
-            max_stops=max_stops, min_stint_length=min_stint_length, step=step
+            max_stops=max_stops,
+            min_stint_length=min_stint_length,
+            step=step,
+            exact_stops=exact_stops,
         )
 
         results = []
@@ -583,17 +594,21 @@ class StrategyOptimizer:
         mc_iterations: int = 500,
         pit_window_tolerance: float = 1.5,
         step: int = 1,
+        exact_stops: Optional[int] = None,
     ) -> OptimizationResult:
         """Discover the optimal strategy according to the specified objective."""
         start_time = time.perf_counter()
 
         # Step 1: Run Combinatorial Grid Search to rank candidates
-        ranked_candidates = self.grid_solver.search(max_stops=max_stops, step=step)
+        effective_max = exact_stops if exact_stops is not None else max_stops
+        ranked_candidates = self.grid_solver.search(
+            max_stops=effective_max, step=step, exact_stops=exact_stops
+        )
         evaluations_count = len(ranked_candidates)
 
         if not ranked_candidates:
             # Fallback to Dynamic Programming if grid search returned empty
-            dp_strat, dp_time = self.dp_solver.solve(max_stops=max_stops)
+            dp_strat, dp_time = self.dp_solver.solve(max_stops=effective_max)
             ranked_candidates = [(dp_strat, dp_time)]
 
         # Step 2: Handle Objective Selection

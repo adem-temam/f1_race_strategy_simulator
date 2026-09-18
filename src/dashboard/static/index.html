@@ -24,12 +24,12 @@
         <label for="circuitSelect">GRAND PRIX:</label>
         <select id="circuitSelect" class="custom-select">
           <option value="bahrain">Sakhir (Bahrain GP)</option>
-          <option value="barcelona">Barcelona (Spanish GP)</option>
-          <option value="monza">Monza (Italian GP)</option>
         </select>
       </div>
       <span id="circuitLapsBadge" class="circuit-pill">57 Laps</span>
-      <span id="circuitBasePaceBadge" class="circuit-pill">Base: 93.5s</span>
+      <span id="circuitBasePaceBadge" class="circuit-pill">Base: 91.0s</span>
+      <span id="circuitPitLossBadge" class="circuit-pill">Pit: 22.5s</span>
+      <span id="circuitDegBadge" class="circuit-pill">Deg: 1.30x</span>
     </div>
   </header>
 
@@ -142,11 +142,12 @@
           </p>
 
           <div class="control-group">
-            <label>MAXIMUM PIT STOPS</label>
+            <label>STRATEGY SCOPE / PIT STOPS</label>
             <select id="optMaxStops" class="custom-select" style="width: 100%;">
-              <option value="1">1 Stop (2 Stints)</option>
-              <option value="2" selected>2 Stops (3 Stints)</option>
-              <option value="3">3 Stops (4 Stints)</option>
+              <option value="any_3" selected>Best Overall (Up to 3 Stops)</option>
+              <option value="exact_1">Exact 1-Stop (2 Stints / 2 Tyres)</option>
+              <option value="exact_2">Exact 2-Stops (3 Stints / 3 Tyres)</option>
+              <option value="exact_3">Exact 3-Stops (4 Stints / 4 Tyres)</option>
             </select>
           </div>
 
