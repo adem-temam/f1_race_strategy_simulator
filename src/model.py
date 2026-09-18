@@ -43,6 +43,12 @@ class CircuitConfig:
     track_evolution_total: float = 0.0
     tyre_degradation_multiplier: float = 1.0
     traffic_config: CircuitTrafficConfig = CircuitTrafficConfig()
+    elevation_change_m: float = 0.0
+    circuit_type: str = "Standard"
+    longest_straight_m: float = 1000.0
+    num_corners: int = 16
+    full_throttle_pct: float = 65.0
+    downforce_level: str = "Medium"
 
     def __post_init__(self) -> None:
         if self.total_laps < 1:

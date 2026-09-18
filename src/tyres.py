@@ -116,4 +116,24 @@ PIRELLI_COMPOUNDS: dict[str, TyreCompound] = {
         cliff_lap=14,
         cliff_coefficient=0.050,
     ),
+    "Intermediate": TyreCompound(
+        name="Intermediate",
+        base_delta=6.50,
+        alpha=0.075,
+        beta=0.0009,
+        cliff_lap=30,
+        cliff_coefficient=0.040,
+    ),
+    "Wet": TyreCompound(
+        name="Wet",
+        base_delta=14.00,
+        alpha=0.055,
+        beta=0.0006,
+        cliff_lap=35,
+        cliff_coefficient=0.035,
+    ),
 }
+
+PIRELLI_COMPOUNDS["I"] = PIRELLI_COMPOUNDS["Intermediate"]
+PIRELLI_COMPOUNDS["W"] = PIRELLI_COMPOUNDS["Wet"]
+

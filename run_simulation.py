@@ -63,6 +63,10 @@ def get_default_strategies(circuit_key: str, compounds: dict) -> list[Strategy]:
             Strategy([Stint(s, 15), Stint(m, 20), Stint(s, 18)], name="2-Stop (S-M-S)"),
         ]
     else:
+        from src.config import CIRCUIT_PRESETS
+        if circuit_key in CIRCUIT_PRESETS and "default_strategies" in CIRCUIT_PRESETS[circuit_key]:
+            from src.dashboard.app import StrategyParseHelper
+            return [StrategyParseHelper.parse(s_str, compounds) for s_str in CIRCUIT_PRESETS[circuit_key]["default_strategies"]]
         raise ValueError(f"Unknown circuit: {circuit_key}")
 
 
