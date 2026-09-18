@@ -158,6 +158,8 @@ def get_circuits() -> list[dict[str, Any]]:
     """Return available circuits and their configuration parameters."""
     out = []
     for key, p in CIRCUIT_PRESETS.items():
+        if key == "madrid":
+            continue
         compounds = get_circuit_compounds(key)
         comp_list = []
         for c_key in ("Soft", "Medium", "Hard"):
@@ -185,6 +187,10 @@ def get_circuits() -> list[dict[str, Any]]:
             "circuit_type": p.get("circuit_type", "Standard"),
             "typical_race_duration": p.get("typical_race_duration", "~90 min"),
             "avg_speed_kmh": p.get("avg_speed_kmh", 220.0),
+            "longest_straight_m": p.get("longest_straight_m", 1000),
+            "num_corners": p.get("num_corners", 16),
+            "full_throttle_pct": p.get("full_throttle_pct", 65.0),
+            "downforce_level": p.get("downforce_level", "Medium"),
         })
     return out
 

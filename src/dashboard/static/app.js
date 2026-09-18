@@ -86,6 +86,14 @@ function updateCircuitBadges() {
   document.getElementById("circuitLapsBadge").textContent = `${c.total_laps} Laps`;
   document.getElementById("circuitBasePaceBadge").textContent = `Base: ${c.base_lap_time}s`;
 
+  const layoutBadge = document.getElementById("circuitLayoutBadge");
+  if (layoutBadge) {
+    const strM = c.longest_straight_m ? `${c.longest_straight_m.toLocaleString()}m` : "N/A";
+    const turns = c.num_corners ? `${c.num_corners} Turns` : "";
+    layoutBadge.textContent = `📏 ${strM} Str | ${turns}`;
+    layoutBadge.title = `Longest Straight: ${strM} | Corners: ${c.num_corners || 'N/A'} | Throttle: ${c.full_throttle_pct || 65}% | Downforce: ${c.downforce_level || 'Medium'}`;
+  }
+
   const elevBadge = document.getElementById("circuitElevationBadge");
   if (elevBadge) {
     const elev = c.elevation_change_m !== undefined ? c.elevation_change_m : 0.0;

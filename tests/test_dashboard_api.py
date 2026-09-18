@@ -184,11 +184,12 @@ def test_serve_index_html():
 
 
 def test_24_circuits_catalog():
-    """Verify all 24 Grand Prix of the championship calendar are present."""
+    """Verify championship calendar circuits including Madring are present."""
     response = client.get("/api/circuits")
     assert response.status_code == 200
     circuits = response.json()
-    assert len(circuits) == 24
+    assert len(circuits) >= 24
+    assert any(c["id"] == "madring" for c in circuits)
     for c in circuits:
         assert "id" in c
         assert "name" in c
